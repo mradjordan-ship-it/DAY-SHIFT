@@ -1,0 +1,47 @@
+[
+  {
+    "content": "Fix path traversal in /api/media/ — validate resolved path stays in UPLOAD_DIR",
+    "id": "B1",
+    "status": "completed"
+  },
+  {
+    "content": "Fix hardcoded JWT secret — remove default, require env var",
+    "id": "B2",
+    "status": "completed"
+  },
+  {
+    "content": "Fix password reset token leaked in API response — remove fake_email_link",
+    "id": "B3",
+    "status": "completed"
+  },
+  {
+    "content": "Fix /api/users/{id} leaking reset_token — pop sensitive fields",
+    "id": "B4",
+    "status": "completed"
+  },
+  {
+    "content": "Fix production build — ensure dist/ is built before serving",
+    "id": "B5",
+    "status": "completed"
+  },
+  {
+    "content": "Fix CORS config — add CORSMiddleware to FastAPI app",
+    "id": "B6",
+    "status": "completed"
+  },
+  {
+    "content": "Add file upload size limits (10MB image, 100MB video)",
+    "id": "W1",
+    "status": "completed"
+  },
+  {
+    "content": "Fix DB connections — add try/finally for proper cleanup (db_conn context manager added)",
+    "id": "W2",
+    "status": "completed"
+  },
+  {
+    "content": "Make marketing opt-in optional (not required for registration)",
+    "id": "W3",
+    "status": "completed"
+  }
+]

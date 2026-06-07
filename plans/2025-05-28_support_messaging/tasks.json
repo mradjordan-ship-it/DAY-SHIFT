@@ -1,0 +1,32 @@
+[
+  {
+    "content": "Add support_messages table to db.py and run migration",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "Add backend API routes: send message, list threads, get thread, admin reply",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "Add Contact Day Shift UI for users (from profile dropdown)",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "Add Support Inbox tab to admin dashboard with read/reply",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "Add sponsor/donor/supporter public contact path",
+    "id": "5",
+    "status": "completed"
+  },
+  {
+    "content": "Build and test",
+    "id": "6",
+    "status": "completed"
+  }
+]

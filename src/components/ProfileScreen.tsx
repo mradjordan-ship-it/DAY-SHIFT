@@ -1,0 +1,763 @@
+import { useState, useEffect, useRef } from "react";
+import type { Video, Review } from "../types";
+import { useAuth, useNav } from "../App";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2
+} from "lucide-react";
+import { RoleIcon, CategoryIcon, SaleIcon, EventIcon } from "./Icons";
+import { cn } from "@/lib/utils";
+
+export default function ProfileScreen() {
+  const { user, token, logout, refreshUser } = useAuth();
+  const { navigate } = useNav();
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", bio: "" });
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const avatarRef = useRef<HTMLInputElement>(null);
+  
+  // Post Edit State
+  const [postEditOpen, setPostEditOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<Video | null>(null);
+  const [postForm, setPostForm] = useState<{ title: string; description: string; repost: boolean; category: string; price: string; event_date: string; event_time: string; aspect_ratio: string; file?: File }>({ title: "", description: "", repost: false, category: "general", price: "", event_date: "", event_time: "", aspect_ratio: "9:16" });
+  const [postSaving, setPostSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user || !token) return;
+    setForm({ name: user.name, email: user.email || "", bio: user.bio || "" });
+
+    const fetchData = async () => {
+      const [vRes, rRes] = await Promise.all([
+        fetch(`/api/videos?user_id=${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/users/${user.id}/reviews`),
+      ]);
+      if (vRes.ok) setVideos(await vRes.json());
+      if (rRes.ok) setReviews(await rRes.json());
+    };
+    fetchData();
+  }, [user, token]);
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 p-6 text-center">
+        <p className="text-muted-foreground">Sign in to view your profile</p>
+      </div>
+    );
+  }
+
+  const openEdit = () => {
+    setForm({ name: user.name, email: user.email || "", bio: user.bio || "" });
+    setAvatarPreview("");
+    setAvatarFile(null);
+    setSaveError("");
+    setEditOpen(true);
+  };
+
+  const handleAvatarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      // Upload avatar first if changed
+      if (avatarFile) {
+        setAvatarUploading(true);
+        const fd = new FormData();
+        fd.append("file", avatarFile);
+        const res = await fetch("/api/users/me/avatar", {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        setAvatarUploading(false);
+        if (!res.ok) throw new Error("Failed to upload photo");
+      }
+
+      // Save profile fields
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: form.name, email: form.email, bio: form.bio }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.detail || "Failed to save");
+      }
+      await refreshUser();
+      setEditOpen(false);
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSaving(false);
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleDeleteVideo = async (id: number) => {
+    if (!window.confirm("Delete this video?")) return;
+    await fetch(`/api/videos/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setVideos((prev) => prev.filter((v) => v.id !== id));
+  };
+
+  const openEditPost = (video: Video) => {
+    setEditingPost(video);
+    setPostForm({ title: video.title || "", description: video.description || "", repost: false, category: video.category || "general", price: video.price || "", event_date: video.event_date || "", event_time: video.event_time || "", aspect_ratio: video.aspect_ratio || "9:16" });
+    setPostEditOpen(true);
+  };
+
+  const handleSavePost = async () => {
+    if (!editingPost) return;
+    setPostSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("title", postForm.title);
+      fd.append("description", postForm.description);
+      fd.append("repost", postForm.repost ? "true" : "false");
+      fd.append("category", postForm.category);
+      fd.append("price", postForm.price);
+      fd.append("event_date", postForm.event_date);
+      fd.append("event_time", postForm.event_time);
+      fd.append("aspect_ratio", postForm.aspect_ratio);
+      if (postForm.file) {
+        fd.append("file", postForm.file);
+      }
+
+      const res = await fetch(`/api/videos/${editingPost.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+
+      if (!res.ok) throw new Error("Failed to update post");
+      const updated = await res.json();
+      
+      setVideos(prev => prev.map(v => v.id === updated.id ? updated : v));
+      // if reposted, we might want to sort or simply refresh
+      if (postForm.repost) {
+        setVideos(prev => {
+          const others = prev.filter(v => v.id !== updated.id);
+          return [updated, ...others];
+        });
+      }
+      setPostEditOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update post");
+    } finally {
+      setPostSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await fetch("/api/users/me", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      logout();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const isWorker = user.role === "worker";
+  const isAdmin = user.role === "admin";
+  const confirmWord = "DELETE";
+
+  return (
+    <div className="overflow-y-auto h-[calc(100vh-120px)] pb-6">
+
+      {/* Header banner */}
+      <div
+        className="relative h-32"
+        style={{
+          background: "linear-gradient(135deg, hsl(25 95% 20%) 0%, hsl(25 95% 35%) 100%)",
+        }}
+      >
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-4 left-4 w-16 h-16 rounded-full bg-primary/40" />
+          <div className="absolute top-8 right-8 w-24 h-24 rounded-full bg-primary/20" />
+        </div>
+        {/* Action buttons */}
+        <div className="absolute top-3 right-3 flex gap-2">
+          <button
+            onClick={openEdit}
+            className="w-8 h-8 bg-black/30 backdrop-blur rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            title="Edit profile"
+          >
+            <Settings size={15} />
+          </button>
+          <button
+            onClick={logout}
+            className="w-8 h-8 bg-black/30 backdrop-blur rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors"
+            title="Sign out"
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* Avatar */}
+      <div className="px-5 -mt-10 mb-4 flex items-end justify-between">
+        <div className="relative">
+          <div className="w-20 h-20 rounded-2xl bg-secondary border-4 border-background overflow-hidden ember-glow">
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-2xl font-black text-primary">
+                {user.name[0]?.toUpperCase()}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="flex gap-4 text-center">
+          <div>
+            <p className="text-lg font-bold text-foreground" style={{ fontFamily: "'Bebas Neue'" }}>
+              {videos.length}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Posts</p>
+          </div>
+          {!user.is_admin && (
+            <>
+              <div>
+                <p className="text-lg font-bold text-foreground" style={{ fontFamily: "'Bebas Neue'" }}>
+                  {user.total_shifts}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Shifts</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-primary flex items-center gap-0.5" style={{ fontFamily: "'Bebas Neue'" }}>
+                  <Star size={14} className="fill-primary" />
+                  {user.avg_rating ? Number(user.avg_rating).toFixed(1) : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Rating</p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Name / role / bio */}
+      <div className="px-5 mb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <h2 className="text-xl font-bold text-foreground">{user.name}</h2>
+          <Badge className={`text-[10px] border-0 ${
+            isAdmin ? "bg-purple-500/20 text-purple-300" :
+            isWorker ? "bg-orange-500/20 text-orange-300" : "bg-blue-500/20 text-blue-300"
+          }`}>
+            <RoleIcon role={user.role} className="w-3 h-3 mr-1" />
+            {isAdmin ? "Admin" : isWorker ? "Crew" : "Kitchen"}
+          </Badge>
+          <button
+            onClick={openEdit}
+            className="ml-auto text-muted-foreground hover:text-primary transition-colors"
+            title="Edit profile"
+          >
+            <Pencil size={14} />
+          </button>
+        </div>
+        {user.bio && <p className="text-muted-foreground text-sm leading-snug">{user.bio}</p>}
+
+        {/* Contact Day Shift */}
+        <button
+          onClick={() => navigate("support")}
+          className="w-full mt-3 p-3 bg-card border border-border rounded-xl flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+            <MessageCircle size={16} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-foreground font-semibold text-sm">Contact Day Shift</p>
+            <p className="text-muted-foreground text-xs">Get help, report an issue, or ask a question</p>
+          </div>
+        </button>
+
+        {/* Tip Jar */}
+        <button
+          onClick={() => navigate("sponsor")}
+          className="w-full mt-2 p-3 bg-gradient-to-r from-amber-500/10 to-amber-900/10 border border-amber-500/20 rounded-xl flex items-center gap-3 hover:from-amber-500/20 hover:to-amber-900/20 transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <DollarSign size={16} className="text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-foreground font-semibold text-sm">Support Day Shift ☕</p>
+          </div>
+        </button>
+
+        {user.is_advertiser && !user.is_admin && (
+          <button
+            onClick={() => navigate("boost")}
+            className="w-full mt-2 p-3 bg-gradient-to-r from-purple-500/10 to-violet-500/10 border border-purple-500/20 rounded-xl flex items-center gap-3 hover:from-purple-500/20 hover:to-violet-500/20 transition-colors text-left"
+          >
+            <div className="w-9 h-9 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+              <Zap size={16} className="text-purple-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-foreground font-semibold text-sm">Boost Your Posts 🚀</p>
+              <p className="text-muted-foreground text-xs">Get more visibility with sponsored boosts</p>
+            </div>
+          </button>
+        )}
+      </div>
+
+      {/* Videos grid */}
+      {videos.length > 0 && (
+        <div className="px-5 mb-5">
+          <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
+            My Posts ({videos.length})
+          </h3>
+          <div className="grid grid-cols-3 gap-1.5">
+            {videos.map((video) => (
+              <div key={video.id} className="relative aspect-square rounded-xl overflow-hidden bg-secondary group">
+                {video.image_url ? (
+                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
+                ) : video.video_url ? (
+                  <video
+                    src={video.video_url}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                  />
+                ) : video.description ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-purple-950/60 p-2">
+                    <p className="text-white/80 text-[9px] text-center line-clamp-4">{video.description}</p>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                )}
+                
+                <button
+                  onClick={() => openEditPost(video)}
+                  className="absolute inset-0 bg-black/10 hover:bg-black/40 transition-all z-10 flex flex-col items-center justify-center opacity-0 hover:opacity-100 focus:opacity-100"
+                >
+                  <div className="w-8 h-8 bg-black/60 backdrop-blur rounded-full flex items-center justify-center">
+                    <Pencil size={14} className="text-white" />
+                  </div>
+                </button>
+
+                <div className="absolute bottom-1 left-1 right-1 pointer-events-none">
+                  <p className="text-white text-[10px] font-medium truncate drop-shadow">{video.title || video.description?.slice(0, 30)}</p>
+                </div>
+                <Badge
+                    className={`absolute top-1 left-1 text-[9px] border-0 py-0 px-1 pointer-events-none ${video.type === "worker" ? "bg-orange-500/80 text-white" : "bg-blue-500/80 text-white"}`}
+                  >
+                    <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-3 h-3" />
+                  </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reviews */}
+      {reviews.length > 0 && (
+        <div className="px-5">
+          <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
+            Reviews ({reviews.length})
+          </h3>
+          <div className="space-y-3">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-card rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full bg-secondary overflow-hidden">
+                    {review.reviewer_avatar ? (
+                      <img src={review.reviewer_avatar} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary">
+                        {review.reviewer_name?.[0]}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-foreground">{review.reviewer_name}</p>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} size={10} className={i < review.rating ? "fill-primary text-primary" : "text-border"} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {review.feedback && <p className="text-muted-foreground text-xs">{review.feedback}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Legal Footer ──────────────────────────────────────────── */}
+      <div className="flex items-center justify-center gap-3 py-4 text-[10px] text-muted-foreground/60">
+        <button onClick={() => navigate("terms")} className="hover:text-primary transition-colors">Terms of Use</button>
+        <span>·</span>
+        <button onClick={() => navigate("privacy")} className="hover:text-primary transition-colors">Privacy Policy</button>
+      </div>
+
+      {/* ── Edit Profile Dialog ──────────────────────────────────────────── */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="bg-card border-border max-w-sm mx-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-foreground" style={{ fontFamily: "'Bebas Neue'", fontSize: "1.4rem" }}>
+              Edit Profile
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[65vh] space-y-4 pt-1 pr-1">
+            {/* Avatar picker */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-shrink-0">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden bg-secondary border-2 border-border">
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
+                  ) : user.avatar_url ? (
+                    <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xl font-black text-primary">
+                      {user.name[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => avatarRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center"
+                >
+                  <Camera size={12} className="text-primary-foreground" />
+                </button>
+                <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarPick} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={() => avatarRef.current?.click()}
+                  className="text-xs text-primary hover:underline text-left"
+                >
+                  {avatarPreview ? "Change photo" : ""}
+                </button>
+                {avatarPreview && (
+                  <button
+                    onClick={() => { setAvatarPreview(""); setAvatarFile(null); }}
+                    className="text-xs text-muted-foreground hover:text-destructive text-left flex items-center gap-1"
+                  >
+                    <X size={10} /> Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Name</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                className="bg-secondary border-border"
+                placeholder="Your name"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Email</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                className="bg-secondary border-border"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bio</Label>
+              <Textarea
+                value={form.bio}
+                onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                className="bg-secondary border-border resize-none text-sm"
+                rows={3}
+                placeholder={isWorker ? "Your experience, availability, specialties..." : "Your spot, cuisine type, team culture..."}
+              />
+            </div>
+
+            {saveError && (
+              <p className="text-destructive text-xs text-center bg-destructive/10 rounded-lg py-2 px-3">{saveError}</p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1 border-border text-foreground"
+                onClick={() => setEditOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handleSave}
+                disabled={saving || !form.name.trim()}
+              >
+                {saving ? (
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : avatarUploading ? "Uploading…" : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Delete account — always visible outside scroll area */}
+          <div className="pt-2 border-t border-border mt-2 sticky bottom-0 bg-card">
+            <button
+              onClick={() => { setEditOpen(false); setConfirmText(""); setDeleteOpen(true); }}
+              className="w-full text-xs text-destructive/60 hover:text-destructive transition-colors text-center py-1"
+            >
+              Delete account
+            </button>
+          </div>
+        </DialogContent>
+      {/* ── Edit Post Dialog ──────────────────────────────────────────── */}
+      <Dialog open={postEditOpen} onOpenChange={setPostEditOpen}>
+        <DialogContent className="bg-card border-border max-w-sm mx-auto rounded-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground" style={{ fontFamily: "'Bebas Neue'", fontSize: "1.4rem" }}>
+              Edit Post
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Title</Label>
+              <Input
+                placeholder="Brief title (optional)"
+                value={postForm.title}
+                onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
+                className="bg-secondary border-border"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <Textarea
+                placeholder="What's this post about?"
+                value={postForm.description}
+                onChange={(e) => setPostForm({ ...postForm, description: e.target.value })}
+                className="bg-secondary border-border min-h-[80px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Category</Label>
+                <Select onValueChange={(v) => setPostForm({ ...postForm, category: v })} value={postForm.category}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general"><Sparkles size={12} className="inline mr-1" /> General</SelectItem>
+                    <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>
+                    <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>
+                    <SelectItem value="sale"><SaleIcon className="w-3 h-3 inline mr-1" />For Sale</SelectItem>
+                    <SelectItem value="event"><EventIcon className="w-3 h-3 inline mr-1" />Event</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {postForm.category === "sale" && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Price</Label>
+                  <Input value={postForm.price} onChange={(e) => setPostForm({ ...postForm, price: e.target.value })} placeholder="$150" className="bg-secondary border-border" />
+                </div>
+              )}
+              {postForm.category === "event" && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Date</Label>
+                  <Input type="date" value={postForm.event_date} onChange={(e) => setPostForm({ ...postForm, event_date: e.target.value })} className="bg-secondary border-border" />
+                </div>
+              )}
+            </div>
+            {postForm.category === "event" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Time</Label>
+                  <Input type="time" value={postForm.event_time} onChange={(e) => setPostForm({ ...postForm, event_time: e.target.value })} className="bg-secondary border-border" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Price</Label>
+                  <Input value={postForm.price} onChange={(e) => setPostForm({ ...postForm, price: e.target.value })} placeholder="$25 or Free" className="bg-secondary border-border" />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Aspect Ratio</Label>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] text-muted-foreground mr-1">Tall</span>
+                {(["9:16", "4:5", "1:1", "16:9"] as const).map((r) => (
+                  <button key={r} type="button" onClick={() => setPostForm({ ...postForm, aspect_ratio: r })}
+                    className={cn("px-2 py-0.5 rounded text-[9px] font-bold transition-all", postForm.aspect_ratio === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground bg-secondary")}
+                  >{r}</button>
+                ))}
+                <span className="text-[9px] text-muted-foreground ml-1">Wide</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Replace Media</Label>
+              <Input
+                type="file"
+                accept="image/*,video/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setPostForm({ ...postForm, file });
+                  }
+                }}
+                className="bg-secondary border-border"
+              />
+              <p className="text-[10px] text-muted-foreground">Upload a new photo or video to replace the current one.</p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="repost"
+                checked={postForm.repost}
+                onChange={(e) => setPostForm({ ...postForm, repost: e.target.checked })}
+                className="w-4 h-4 rounded border-border bg-secondary text-primary"
+              />
+              <Label htmlFor="repost" className="text-sm font-medium text-foreground cursor-pointer">
+                Repost this to the top of the feed
+              </Label>
+            </div>
+
+            <div className="flex gap-2 pt-4 pb-2">
+              <Button
+                variant="outline"
+                className="flex-1 border-border text-foreground"
+                onClick={() => setPostEditOpen(false)}
+                disabled={postSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handleSavePost}
+                disabled={postSaving}
+              >
+                {postSaving ? (
+                  <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+          
+          <div className="pt-2 border-t border-border mt-2 sticky bottom-0 bg-card">
+            <button
+              onClick={() => {
+                setPostEditOpen(false);
+                if (editingPost) handleDeleteVideo(editingPost.id);
+              }}
+              className="w-full text-xs text-destructive/80 hover:text-destructive transition-colors text-center py-1 flex items-center justify-center gap-1.5 font-medium"
+            >
+              <Trash2 size={13} />
+              Delete Post
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      </Dialog>
+
+      {/* ── Delete Account Confirmation Dialog ─────────────────────────── */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="bg-card border-border max-w-sm mx-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2" style={{ fontFamily: "'Bebas Neue'", fontSize: "1.4rem" }}>
+              <AlertTriangle size={20} />
+              Delete Account
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1">
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 space-y-1">
+              <p className="text-sm font-semibold text-destructive">This cannot be undone.</p>
+              <ul className="text-xs text-destructive/80 space-y-0.5 list-disc list-inside">
+                <li>All your videos will be deleted</li>
+                <li>All your matches and messages will be deleted</li>
+                <li>All your reviews will be deleted</li>
+                <li>Your account will be permanently removed</li>
+              </ul>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Type <span className="font-bold text-destructive">{confirmWord}</span> to confirm
+              </Label>
+              <Input
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                className="bg-secondary border-destructive/40 focus:border-destructive text-sm"
+                placeholder={confirmWord}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 border-border text-foreground"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDeleteAccount}
+                disabled={deleting || confirmText !== confirmWord}
+              >
+                {deleting ? (
+                  <div className="w-4 h-4 border-2 border-destructive-foreground border-t-transparent rounded-full animate-spin" />
+                ) : "Delete Forever"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+    </div>
+  );
+}

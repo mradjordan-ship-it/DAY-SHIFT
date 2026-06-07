@@ -1,0 +1,32 @@
+[
+  {
+    "content": "Add category & price columns to videos table in db.py",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "Update POST/GET routes to accept & return category + price",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "Update PATCH route for category + price editing",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "Add Video interface fields in types.ts",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "Add category selector + price field to PostScreen.tsx",
+    "id": "5",
+    "status": "completed"
+  },
+  {
+    "content": "Add For Sale badge + price on FeedScreen.tsx cards",
+    "id": "6",
+    "status": "completed"
+  }
+]

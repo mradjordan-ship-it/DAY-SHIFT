@@ -1,0 +1,32 @@
+[
+  {
+    "content": "[ADMIN-1] Add is_admin column to users table + admin auth check in routes.py",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[ADMIN-2] Add admin API endpoints (stats, users, videos, moderation)",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[ADMIN-3] Create AdminScreen.tsx component",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[ADMIN-4] Wire AdminScreen into App.tsx navigation (admin-only nav item)",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "[ADMIN-5] Set owner account as admin + test",
+    "id": "5",
+    "status": "completed"
+  },
+  {
+    "content": "[ADMIN-6] Add PostHog analytics integration",
+    "id": "6",
+    "status": "completed"
+  }
+]

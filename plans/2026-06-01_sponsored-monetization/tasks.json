@@ -1,0 +1,52 @@
+[
+  {
+    "content": "[db] Add 3 new tables: advertiser_subscriptions, post_boosts, post_analytics",
+    "id": "1-db-schema",
+    "status": "completed"
+  },
+  {
+    "content": "[backend] Add tier/pricing, subscription, boost, analytics, and admin approval routes",
+    "id": "2-backend-routes",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend] Create BoostScreen with tier selection + Cash App ($dayshift1) flow",
+    "id": "3-boost-screen",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend] Create AnalyticsScreen with views, clicks, matches dashboard",
+    "id": "4-analytics-screen",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend] Add Boost buttons to PostScreen + ProfileScreen",
+    "id": "5-boost-buttons",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend] Add view/click analytics tracking in FeedScreen",
+    "id": "6-feed-tracking",
+    "status": "pending"
+  },
+  {
+    "content": "[frontend] Update AdminScreen with Boosts tab (approve/reject)",
+    "id": "7-admin-boosts",
+    "status": "completed"
+  },
+  {
+    "content": "[backend] Update feed query to prioritize boosted posts",
+    "id": "8-feed-boost-logic",
+    "status": "completed"
+  },
+  {
+    "content": "[fix] Update Cash App tag to $dayshift1 everywhere",
+    "id": "9-cashapp-tag",
+    "status": "completed"
+  },
+  {
+    "content": "[test] Verify full flow end-to-end",
+    "id": "10-test",
+    "status": "completed"
+  }
+]

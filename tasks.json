@@ -1,0 +1,27 @@
+[
+  {
+    "content": "Research BLS API endpoints and Eater/RB RSS feed URLs",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "Add BLS wage data integration to /api/ticker endpoint",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "Add RSS news feed integration (Eater + Restaurant Business) to /api/ticker",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "Update TickerTape.tsx to render news items with source attribution and external links",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "Build, test, verify in browser",
+    "id": "5",
+    "status": "completed"
+  }
+]

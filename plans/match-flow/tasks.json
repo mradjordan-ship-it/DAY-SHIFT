@@ -1,0 +1,22 @@
+[
+  {
+    "content": "[backend] Add POST /matches/{id}/cancel endpoint for match initiator to cancel pending match",
+    "id": "1-cancel-endpoint",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend] Add cancel button for initiator in MatchesScreen pending tab",
+    "id": "2-cancel-ui",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend] Add cancel button in FeedScreen match animation for existing pending matches",
+    "id": "3-feed-cancel",
+    "status": "completed"
+  },
+  {
+    "content": "[test] Verify cancel flow works end-to-end",
+    "id": "4-test",
+    "status": "completed"
+  }
+]

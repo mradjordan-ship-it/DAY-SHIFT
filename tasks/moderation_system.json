@@ -1,0 +1,32 @@
+[
+  {
+    "content": "[MOD-1] Add reports table + suspension fields to DB",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[MOD-2] Add report + suspension endpoints to routes.py",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[MOD-3] Block suspended users at login, show suspension reason",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[MOD-4] Add report button on video cards and profiles",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "[MOD-5] Add Reports tab to AdminScreen with review actions",
+    "id": "5",
+    "status": "completed"
+  },
+  {
+    "content": "[MOD-6] Test end-to-end moderation flow",
+    "id": "6",
+    "status": "completed"
+  }
+]

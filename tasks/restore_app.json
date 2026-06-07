@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Initialize database tables (init_db)",
+    "id": "1-init-db",
+    "status": "completed"
+  },
+  {
+    "content": "Create admin user (DAY SHIFT)",
+    "id": "2-admin-user",
+    "status": "completed"
+  },
+  {
+    "content": "Re-seed demo content (crew, kitchens, posts)",
+    "id": "3-seed-demo",
+    "status": "completed"
+  },
+  {
+    "content": "Restart server and verify app works",
+    "id": "4-restart",
+    "status": "completed"
+  }
+]

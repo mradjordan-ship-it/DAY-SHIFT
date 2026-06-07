@@ -1,51 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    /* Day Shift — dark orange-ember theme */
+    --background: 20 14% 6%;
+    --foreground: 30 15% 94%;
+    --card: 20 12% 9%;
+    --card-foreground: 30 15% 94%;
+    --popover: 20 12% 9%;
+    --popover-foreground: 30 15% 94%;
+    --primary: 25 95% 55%;
+    --primary-foreground: 20 14% 6%;
+    --secondary: 20 10% 14%;
+    --secondary-foreground: 30 15% 80%;
+    --muted: 20 10% 14%;
+    --muted-foreground: 25 10% 55%;
+    --accent: 25 95% 55%;
+    --accent-foreground: 20 14% 6%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 20 12% 16%;
+    --input: 20 12% 16%;
+    --ring: 25 95% 55%;
+    --radius: 0.75rem;
   }
 }
 
@@ -53,7 +34,185 @@
   * {
     @apply border-border;
   }
+  html {
+    font-family: 'DM Sans', sans-serif;
+  }
   body {
     @apply bg-background text-foreground;
+    font-family: 'DM Sans', sans-serif;
   }
+  h1, h2, h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.04em;
+  }
+}
+
+/* Safari iOS — keep autofill icons anchored to scroll container */
+[class*="overflow-y-auto"],
+[class*="overflow-y-scroll"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+/* Video feed snap scroll */
+.snap-y {
+  scroll-snap-type: y mandatory;
+}
+.snap-start {
+  scroll-snap-align: start;
+}
+
+/* Gradient overlays */
+.video-gradient-top {
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 40%);
+}
+.video-gradient-bottom {
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%);
+}
+
+/* Ember glow effect */
+.ember-glow {
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.3), 0 0 60px rgba(249, 115, 22, 0.1);
+}
+
+/* Card shimmer on hover */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(249, 115, 22, 0.15);
+}
+
+/* Pulse for live/active indicators */
+@keyframes pulse-orange {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-orange {
+  animation: pulse-orange 2s ease-in-out infinite;
+}
+
+/* Ticker tape fade animation */
+@keyframes ticker-fade {
+  0% { opacity: 0; transform: translateY(6px); }
+  10% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.animate-ticker-fade {
+  animation: ticker-fade 4s ease-in-out;
+}
+
+/* Bottom nav active indicator */
+.nav-active::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  margin: 2px auto 0;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Message bubble */
+.bubble-me {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 18px 18px 4px 18px;
+}
+.bubble-them {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  border-radius: 18px 18px 18px 4px;
+}
+
+/* Star rating */
+.star-filled {
+  color: hsl(var(--primary));
+}
+.star-empty {
+  color: hsl(var(--border));
+}
+
+/* Upload drag area */
+.drag-active {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.05);
+}
+
+/* Video preview object-fit */
+video {
+  object-fit: cover;
+}
+
+/* Maximum sharpness for media */
+video,
+img[src*="/api/media/"] {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Hide browser autofill icons on input fields */
+input::-webkit-credentials-auto-fill-button,
+input::-webkit-textfield-decoration-container,
+input::-webkit-credit-card-auto-fill-button,
+input::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+input:autofill {
+  -webkit-box-shadow: 0 0 0 30px hsl(var(--secondary)) inset !important;
+  box-shadow: 0 0 0 30px hsl(var(--secondary)) inset !important;
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+}
+
+/* Feed scroll container — container-type removed to fix mobile h-full height chain */
+
+/* Sponsored post border — static gold glow */
+.sponsored-shimmer {
+  position: relative;
+}
+.sponsored-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 193, 7, 0.4) 0%,
+    rgba(255, 215, 0, 0.6) 50%,
+    rgba(255, 193, 7, 0.4) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 5;
 }

@@ -9,11 +9,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    "import.meta.env.VITE_POSTHOG_KEY": JSON.stringify(process.env.VITE_POSTHOG_KEY || ""),
+    "import.meta.env.VITE_POSTHOG_HOST": JSON.stringify(process.env.VITE_POSTHOG_HOST || ""),
+  },
   server: {
     strictPort: true,
     allowedHosts: true,
     proxy: {
       "/api": `http://localhost:${process.env.VITE_BACKEND_PORT || 3101}`,
+    },
+    headers: {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
     },
     watch: {
       ignored: [

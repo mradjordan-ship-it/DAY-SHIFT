@@ -1,7 +1,7 @@
 [project]
-name = "react-app"
+name = "day-shift-marketplace"
 version = "0.1.0"
-description = "React App with FastAPI Backend"
+description = "Day Shift — video-first hospitality gig marketplace"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -10,6 +10,16 @@ dependencies = [
     "httpx==0.28.1",
     "python-multipart==0.0.22",
     "watchfiles==1.1.1",
+    "psycopg2-binary>=2.9.9",
+    "passlib[bcrypt]>=1.7.4",
+    "python-jose[cryptography]>=3.3.0",
+    "aiofiles>=23.2.1",
+    "imageio-ffmpeg>=0.6.0",
+    "qrcode[pil]>=8.2",
+    "stripe>=15.1.0",
+    "feedparser>=6.0.12",
+    "openpyxl>=3.1.5",
+    "slowapi>=0.1.9",
 ]
 
 [tool.uv]
