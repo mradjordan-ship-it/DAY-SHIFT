@@ -723,7 +723,33 @@ function VideoCard({
       }
     >
       {/* Media Content — image, video, or text */}
-      {video.image_url && video.video_url ? (
+      {isHorizontal ? (
+        /* Horizontal carousel cards: show profile headshot as main visual */
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 cursor-pointer"
+          style={{
+            background: video.type === "worker"
+              ? "linear-gradient(135deg, #1a0a02 0%, #3d1a06 50%, #1a0a02 100%)"
+              : "linear-gradient(135deg, #020d1a 0%, #063055 50%, #020d1a 100%)",
+          }}
+          onClick={onProfile}
+        >
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-primary/60 shadow-lg">
+            {video.author_avatar ? (
+              <img src={video.author_avatar} alt={video.author_name || ""} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-primary/20 text-primary text-2xl font-bold">
+                {video.author_name?.[0]?.toUpperCase() || "?"}
+              </div>
+            )}
+          </div>
+          <span className="text-white font-bold text-xs md:text-sm">{video.author_name}</span>
+          <span className="flex items-center gap-0.5 text-[10px]">
+            <Star size={8} className="text-primary fill-primary" />
+            <span className="text-white/60">{video.author_rating ? Number(video.author_rating).toFixed(1) : "New"}</span>
+          </span>
+        </div>
+      ) : video.image_url && video.video_url ? (
         /* Both image and video */
         <>
           <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-cover" />
@@ -768,8 +794,8 @@ function VideoCard({
         </div>
       )}
 
-      {/* Play/pause tap overlay — only when video exists */}
-      {!playing && video.video_url && (
+      {/* Play/pause tap overlay — only when video exists and not horizontal */}
+      {!isHorizontal && !playing && video.video_url && (
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-auto"
           onClick={togglePlay}
@@ -887,24 +913,24 @@ function VideoCard({
         </div>
       )}
 
-      {/* Volume toggle + Fullscreen expand — left side stacked vertically (hidden on text-only posts) */}
-      {(video.video_url || video.image_url) && (
-      <div className={cn("absolute left-3 z-10 flex flex-col gap-1.5", isHorizontal ? "top-14" : "top-14")}>
+      {/* Volume toggle + Fullscreen expand — left side stacked vertically (hidden on text-only posts and horizontal cards) */}
+      {!isHorizontal && (video.video_url || video.image_url) && (
+      <div className="absolute left-3 z-10 flex flex-col gap-1.5 top-14">
         {video.video_url && (
           <button
             onClick={toggleMute}
-            className={cn("bg-black/40 backdrop-blur rounded-full flex items-center justify-center", isHorizontal ? "w-6 h-6" : "w-8 h-8")}
+            className="bg-black/40 backdrop-blur rounded-full flex items-center justify-center w-8 h-8"
           >
             {muted
-              ? <VolumeX size={isHorizontal ? 11 : 14} className="text-white/80" />
-              : <Volume2 size={isHorizontal ? 11 : 14} className="text-white" />}
+              ? <VolumeX size={14} className="text-white/80" />
+              : <Volume2 size={14} className="text-white" />}
           </button>
         )}
         <button
           onClick={() => setFullscreen(true)}
-          className={cn("bg-black/40 backdrop-blur rounded-full flex items-center justify-center", isHorizontal ? "w-6 h-6" : "w-8 h-8")}
+          className="bg-black/40 backdrop-blur rounded-full flex items-center justify-center w-8 h-8"
         >
-          <Maximize2 size={isHorizontal ? 11 : 13} className="text-white/80" />
+          <Maximize2 size={13} className="text-white/80" />
         </button>
       </div>
       )}
@@ -992,6 +1018,11 @@ function VideoCard({
               !titleExpanded && "line-clamp-1"
             )}
           >
+            {video.title}
+          </p>
+        )}
+        {isHorizontal && video.title && (
+          <p className="text-white font-bold leading-tight text-[11px] drop-shadow-md line-clamp-1">
             {video.title}
           </p>
         )}
