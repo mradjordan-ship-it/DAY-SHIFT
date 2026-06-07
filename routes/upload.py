@@ -84,6 +84,13 @@ async def serve_media(filename: str, request: Request):
 
     file_size = resolved.stat().st_size
     is_video = filename.lower().endswith((".mp4", ".webm", ".mov", ".avi"))
+    video_content_type = "video/mp4"
+    if filename.lower().endswith(".webm"):
+        video_content_type = "video/webm"
+    elif filename.lower().endswith(".mov"):
+        video_content_type = "video/quicktime"
+    elif filename.lower().endswith(".avi"):
+        video_content_type = "video/x-msvideo"
     is_head = request.method == "HEAD"
 
     # For videos, support range requests so mobile can stream progressively
@@ -101,7 +108,7 @@ async def serve_media(filename: str, request: Request):
                 "Content-Range": f"bytes {start}-{end}/{file_size}",
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(chunk_size),
-                "Content-Type": "video/mp4",
+                "Content-Type": video_content_type,
                 "Cache-Control": "public, max-age=2592000, immutable",
             }
 
@@ -133,7 +140,7 @@ async def serve_media(filename: str, request: Request):
             return Response(status_code=200, headers={
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(file_size),
-                "Content-Type": "video/mp4",
+                "Content-Type": video_content_type,
                 "Cache-Control": "public, max-age=2592000, immutable",
             })
 

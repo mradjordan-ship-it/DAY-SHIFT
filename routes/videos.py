@@ -382,13 +382,25 @@ async def update_video(
         if file is not None and file.filename:
             ext = Path(file.filename).suffix.lower()
             if ext in (".mp4", ".mov", ".webm"):
-                new_filename = f"vid_{uuid.uuid4()}{ext}"
-                dest = UPLOAD_DIR / new_filename
+                # Save raw upload first
+                raw_filename = f"raw_{uuid.uuid4()}{ext}"
+                raw_dest = UPLOAD_DIR / raw_filename
                 content = await file.read()
-                async with aiofiles.open(dest, "wb") as f:
+                async with aiofiles.open(raw_dest, "wb") as f:
                     await f.write(content)
-                updates.append("video_url = %s")
-                params.append(f"/api/media/{new_filename}")
+                # Transcode to H.264 MP4 for cross-device playback
+                final_filename = f"vid_{uuid.uuid4()}.mp4"
+                final_dest = UPLOAD_DIR / final_filename
+                ok = await transcode_video(raw_dest, final_dest)
+                if ok:
+                    raw_dest.unlink(missing_ok=True)
+                    updates.append("video_url = %s")
+                    params.append(f"/api/media/{final_filename}")
+                else:
+                    # Fallback: serve raw but warn
+                    print(f"[FFmpeg] transcode failed in PATCH, serving raw: {raw_filename}")
+                    updates.append("video_url = %s")
+                    params.append(f"/api/media/{raw_filename}")
                 updates.append("image_url = NULL")
             elif ext in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
                 new_filename = f"img_{uuid.uuid4()}{ext}"

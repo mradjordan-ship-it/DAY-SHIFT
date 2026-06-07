@@ -382,7 +382,7 @@ export default function PostScreen() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/x-m4v" onChange={handleVideoSelectAdmin} className="hidden" />
+                  <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/webm" onChange={handleVideoSelectAdmin} className="hidden" />
                   <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", videoPreviewAdmin ? "border-border bg-black" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
                     <div className="w-full max-h-44 flex items-center justify-center overflow-hidden">
                       {videoPreviewAdmin ? (
