@@ -10,6 +10,19 @@ import { trackEvent } from "../lib/analytics";
 import { cn } from "@/lib/utils";
 import { RoleIcon, CategoryIcon } from "./Icons";
 
+// ── Avatar error fallback: replace broken img with initials ──
+function handleAvatarError(e: React.SyntheticEvent<HTMLImageElement>) {
+  const img = e.currentTarget;
+  const name = img.alt || "";
+  const initial = name[0]?.toUpperCase() || "?";
+  img.style.display = "none";
+  const fallback = document.createElement("div");
+  fallback.className = img.parentElement?.className || "";
+  fallback.style.cssText = "width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(234,88,12,0.15);color:#ea580c;font-weight:700;font-size:1.2rem;";
+  fallback.textContent = initial;
+  img.parentElement?.replaceChild(fallback, img);
+}
+
 // ── Relative time helper ──
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -507,7 +520,7 @@ function HorizontalDeckCard({
   };
 
   return (
-    <div className="relative bg-black overflow-hidden rounded-xl border border-white/5 w-full min-h-[200px] md:min-h-0 aspect-[3/2] md:aspect-video py-1">
+    <div className="relative bg-black overflow-hidden rounded-xl border border-white/5 w-full min-h-[160px] md:min-h-0 aspect-[2/1] md:aspect-[21/9] py-1">
       {/* Horizontal Scroll Content */}
       <div
         ref={containerRef}
@@ -515,7 +528,7 @@ function HorizontalDeckCard({
         className="flex gap-2.5 px-3 overflow-x-auto snap-x snap-mandatory scrollbar-none h-full w-full items-center"
       >
         {videos.map((video, idx) => (
-          <div key={video.id} className="w-[65%] sm:w-[47%] h-full shrink-0 snap-center relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-lg">
+          <div key={video.id} className="w-[55%] sm:w-[40%] h-full shrink-0 snap-center relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-lg">
             <VideoCard
               video={video}
               currentUser={currentUser}
@@ -736,7 +749,7 @@ function VideoCard({
         >
           <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 border-primary/60 shadow-lg">
             {video.author_avatar ? (
-              <img src={video.author_avatar} alt={video.author_name || ""} className="w-full h-full object-cover" />
+              <img src={video.author_avatar} alt={video.author_name || ""} className="w-full h-full object-cover" onError={handleAvatarError} />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-primary/20 text-primary text-2xl font-bold">
                 {video.author_name?.[0]?.toUpperCase() || "?"}
@@ -996,7 +1009,7 @@ function VideoCard({
           <button className="flex items-center gap-1 pointer-events-auto shrink-0 bg-black/40 backdrop-blur-sm rounded-full pr-1.5 pl-0.5 py-0.5 border border-white/10" onClick={onProfile}>
             <div className={cn("rounded-full bg-secondary border border-primary overflow-hidden flex-shrink-0", isHorizontal ? "w-5 h-5" : "w-7 h-7 md:w-7 md:h-7")}>
               {video.author_avatar ? (
-                <img src={video.author_avatar} alt="" className="w-full h-full object-cover" />
+                <img src={video.author_avatar} alt="" className="w-full h-full object-cover" onError={handleAvatarError} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-primary">
                   {video.author_name?.[0]?.toUpperCase()}
@@ -1146,6 +1159,7 @@ function VideoCard({
                 src={video.author_avatar || "/default-avatar.png"}
                 alt={video.author_name}
                 className="w-8 h-8 rounded-full object-cover"
+                onError={handleAvatarError}
               />
               <div className="flex-1 min-w-0">
                 <p className="text-foreground text-sm font-medium truncate">{video.author_name}</p>
@@ -1276,7 +1290,7 @@ function VideoCard({
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 rounded-full bg-secondary border-2 border-primary overflow-hidden flex-shrink-0">
                       {video.author_avatar ? (
-                        <img src={video.author_avatar} alt="" className="w-full h-full object-cover" />
+                        <img src={video.author_avatar} alt="" className="w-full h-full object-cover" onError={handleAvatarError} />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-lg font-bold text-primary">{video.author_name?.[0]?.toUpperCase()}</div>
                       )}
@@ -1338,7 +1352,7 @@ function VideoCard({
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-secondary border border-primary overflow-hidden flex-shrink-0">
                     {video.author_avatar ? (
-                      <img src={video.author_avatar} alt="" className="w-full h-full object-cover" />
+                      <img src={video.author_avatar} alt="" className="w-full h-full object-cover" onError={handleAvatarError} />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-xs font-bold text-primary">{video.author_name?.[0]?.toUpperCase()}</div>
                     )}
