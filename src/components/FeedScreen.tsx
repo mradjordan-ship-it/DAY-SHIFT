@@ -116,7 +116,14 @@ export default function FeedScreen() {
 
         if (videosRes.ok) {
           const data = await videosRes.json();
-          const videoList: Video[] = data.videos || data;  // Support both paginated and legacy format
+          const rawList: Video[] = data.videos || data;  // Support both paginated and legacy format
+          // Deduplicate by video id
+          const seen = new Set<number>();
+          const videoList = rawList.filter((v: Video) => {
+            if (seen.has(v.id)) return false;
+            seen.add(v.id);
+            return true;
+          });
           setVideos(videoList);
           setNextCursor(data.next_cursor || null);
           setHasMore(data.has_more || false);
@@ -130,8 +137,17 @@ export default function FeedScreen() {
             const numCarousels = Math.max(3, Math.ceil(videoList.length / 6));
             for (let i = 0; i < numCarousels; i++) {
               const shuffled = [...regularPosts].sort(() => 0.5 - Math.random());
-              const remainingSponsored = sponsoredPosts.slice(i % Math.max(sponsoredPosts.length, 1), (i % Math.max(sponsoredPosts.length, 1)) + 1);
-              carouselsList.push([...remainingSponsored, ...shuffled].slice(0, 5));
+              // Deduplicate by author so same person doesn't appear twice
+              const seenAuthors = new Set<number>();
+              const uniqueByAuthor: Video[] = [];
+              for (const v of shuffled) {
+                if (!seenAuthors.has(v.user_id)) {
+                  seenAuthors.add(v.user_id);
+                  uniqueByAuthor.push(v);
+                }
+              }
+              const remainingSponsored = sponsoredPosts.filter(s => !seenAuthors.has(s.user_id)).slice(0, 1);
+              carouselsList.push([...remainingSponsored, ...uniqueByAuthor].slice(0, 5));
             }
             setInjectedCarousels(carouselsList);
           } else {
@@ -205,7 +221,11 @@ export default function FeedScreen() {
       if (res.ok) {
         const data = await res.json();
         const newVideos: Video[] = data.videos || [];
-        setVideos((prev) => [...prev, ...newVideos]);
+        setVideos((prev) => {
+          const existing = new Set(prev.map((v) => v.id));
+          const deduped = newVideos.filter((v) => !existing.has(v.id));
+          return [...prev, ...deduped];
+        });
         setNextCursor(data.next_cursor || null);
         setHasMore(data.has_more || false);
       }
@@ -528,7 +548,7 @@ function HorizontalDeckCard({
         className="flex gap-2.5 px-3 overflow-x-auto snap-x snap-mandatory scrollbar-none h-full w-full items-center"
       >
         {videos.map((video, idx) => (
-          <div key={video.id} className="w-[55%] sm:w-[40%] h-full shrink-0 snap-center relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-lg">
+          <div key={`carousel-card-${video.id}`} className="w-[55%] sm:w-[40%] h-full shrink-0 snap-center relative rounded-xl border border-white/10 overflow-hidden bg-black shadow-lg">
             <VideoCard
               video={video}
               currentUser={currentUser}
