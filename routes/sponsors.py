@@ -28,7 +28,7 @@ def sponsor_contact(body: dict):
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -91,7 +91,7 @@ def admin_reply_sponsor(contact_id: int, body: dict, admin=Depends(require_admin
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()

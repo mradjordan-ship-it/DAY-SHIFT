@@ -55,7 +55,7 @@ def send_message(match_id: int, body: MessageBody, current_user=Depends(get_curr
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()

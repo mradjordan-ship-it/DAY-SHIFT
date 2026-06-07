@@ -190,7 +190,7 @@ def reply_to_thread(thread_id: int, body: dict, current_user=Depends(get_current
         raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()

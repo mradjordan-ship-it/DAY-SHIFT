@@ -30,6 +30,9 @@ export default function FeedScreen() {
   const [injectedCarousels, setInjectedCarousels] = useState<Video[][]>([]);
   const [tab, setTab] = useState<FeedTab>("all");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,19 +102,22 @@ export default function FeedScreen() {
         }
 
         if (videosRes.ok) {
-          let data: Video[] = await videosRes.json();
-          setVideos(data);
+          const data = await videosRes.json();
+          const videoList: Video[] = data.videos || data;  // Support both paginated and legacy format
+          setVideos(videoList);
+          setNextCursor(data.next_cursor || null);
+          setHasMore(data.has_more || false);
           
-          if (data.length > 0) {
-            const sponsoredPosts = data.filter((v: Video) => v.is_sponsored || v.category === "sponsored");
-            const regularPosts = data.filter((v: Video) => !v.is_sponsored && v.category !== "sponsored");
+          if (videoList.length > 0) {
+            const sponsoredPosts = videoList.filter((v: Video) => v.is_sponsored || v.category === "sponsored");
+            const regularPosts = videoList.filter((v: Video) => !v.is_sponsored && v.category !== "sponsored");
             
             const carouselsList: Video[][] = [];
             // Create enough carousels to sprinkle through the feed
-            const numCarousels = Math.max(3, Math.ceil(data.length / 6));
+            const numCarousels = Math.max(3, Math.ceil(videoList.length / 6));
             for (let i = 0; i < numCarousels; i++) {
               const shuffled = [...regularPosts].sort(() => 0.5 - Math.random());
-              const remainingSponsored = sponsoredPosts.slice(i % sponsoredPosts.length, (i % sponsoredPosts.length) + 1);
+              const remainingSponsored = sponsoredPosts.slice(i % Math.max(sponsoredPosts.length, 1), (i % Math.max(sponsoredPosts.length, 1)) + 1);
               carouselsList.push([...remainingSponsored, ...shuffled].slice(0, 5));
             }
             setInjectedCarousels(carouselsList);
@@ -168,6 +174,42 @@ export default function FeedScreen() {
       );
     }
   };
+
+  // ── Infinite scroll: load more when sentinel enters viewport ──
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadMore = async () => {
+    if (!hasMore || !nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const qs = new URLSearchParams();
+      if (tab !== "all") qs.set("type", tab === "workers" ? "worker" : "employer");
+      if (searchQuery.trim()) qs.set("q", searchQuery.trim());
+      if (filterCategory !== "all") qs.set("category", filterCategory);
+      qs.set("cursor", nextCursor);
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/videos?${qs.toString()}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const newVideos: Video[] = data.videos || [];
+        setVideos((prev) => [...prev, ...newVideos]);
+        setNextCursor(data.next_cursor || null);
+        setHasMore(data.has_more || false);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { rootMargin: "400px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, nextCursor, loadingMore, tab, token, searchQuery, filterCategory]);
 
   const handleMatch = async (video: Video) => {
     if (!user) { navigate("login"); return; }
@@ -409,6 +451,13 @@ export default function FeedScreen() {
                 >
                   Sign In
                 </button>
+              </div>
+            )}
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="col-span-full h-1" />
+            {loadingMore && (
+              <div className="col-span-full flex justify-center py-4">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             )}
           </>

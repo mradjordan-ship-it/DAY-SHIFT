@@ -17,24 +17,14 @@ async def stripe_webhook(request: Request):
     sig_header = request.headers.get("stripe-signature")
     webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
+    if not webhook_secret:
+        raise HTTPException(500, "Stripe webhook secret not configured — refusing unverified payload")
+
     event = None
     try:
-        if webhook_secret:
-            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-        else:
-            # Without webhook secret, at least validate it's proper JSON with a known event type
-            import json
-            event = json.loads(payload)
-            if not isinstance(event, dict) or "type" not in event or "data" not in event:
-                raise HTTPException(400, "Invalid webhook payload")
-            # Only process known event types
-            allowed_types = {"checkout.session.completed", "payment_intent.succeeded", "payment_intent.payment_failed"}
-            if event.get("type") not in allowed_types:
-                return {"received": True, "ignored": True}
-    except json.JSONDecodeError:
-        raise HTTPException(400, "Invalid JSON")
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except Exception as e:
-        raise HTTPException(400, f"Webhook error: {str(e)}")
+        raise HTTPException(400, f"Webhook verification failed: {str(e)}")
 
     # Handle checkout.session.completed
     if event.get("type") == "checkout.session.completed":
@@ -61,17 +51,20 @@ async def stripe_webhook(request: Request):
                 conn = get_conn()
                 cur = conn.cursor()
                 tier_info = TIERS.get(tier, TIERS["boost"])
-                duration_days = tier_info["duration_days"]
+                duration_days = int(tier_info["duration_days"])
+                # INTERVAL cannot use %s parameter inside a string literal,
+                # so we build the interval clause with a validated integer
+                interval_clause = f"INTERVAL '{duration_days} days'"
                 cur.execute(
-                    """UPDATE post_boosts 
+                    f"""UPDATE post_boosts 
                        SET payment_status = 'paid', 
                            stripe_payment_intent_id = %s,
                            status = 'active',
                            admin_approved = TRUE,
                            start_date = NOW(),
-                           end_date = NOW() + INTERVAL '%s days'
+                           end_date = NOW() + {interval_clause}
                        WHERE id = %s""",
-                    (payment_intent_id, duration_days, int(boost_id)),
+                    (payment_intent_id, int(boost_id)),
                 )
                 conn.commit()
                 cur.close()

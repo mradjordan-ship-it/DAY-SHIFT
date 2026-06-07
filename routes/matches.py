@@ -119,7 +119,7 @@ def create_match(body: MatchBody, current_user=Depends(get_current_user)):
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -293,7 +293,7 @@ def review_match(match_id: int, reviewee_id: int, body: ReviewBody, current_user
         conn.rollback()
         if "unique" in str(e).lower():
             raise HTTPException(400, "Already reviewed this match")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()

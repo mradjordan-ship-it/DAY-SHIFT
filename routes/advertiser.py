@@ -115,7 +115,7 @@ def create_boost(body: BoostBody, request: Request, current_user=Depends(get_cur
         conn.rollback()
         cur.close()
         conn.close()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
 
     # Get the origin for Stripe success/cancel URLs
     origin = request.headers.get("origin") or "https://day-shift.workshop.build"

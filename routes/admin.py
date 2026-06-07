@@ -98,7 +98,7 @@ def admin_delete_user(user_id: int, admin=Depends(require_admin)):
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -241,7 +241,7 @@ def admin_delete_video(video_id: int, admin=Depends(require_admin)):
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()

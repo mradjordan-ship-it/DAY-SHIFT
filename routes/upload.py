@@ -17,6 +17,10 @@ async def upload_video(file: UploadFile = File(...), current_user=Depends(get_cu
     ext = Path(file.filename).suffix.lower() if file.filename else ".mp4"
     if ext not in (".mp4", ".mov", ".webm", ".avi"):
         raise HTTPException(400, "Only MP4, MOV, WEBM, and AVI files are allowed")
+    # Validate MIME type
+    content_type = (file.content_type or "").lower()
+    if not any(t in content_type for t in ("video/", "application/octet-stream")):
+        raise HTTPException(400, "Invalid file type — expected video")
         
     raw_filename = f"raw_{uuid.uuid4()}{ext}"
     raw_dest = UPLOAD_DIR / raw_filename
@@ -51,6 +55,10 @@ async def upload_image(file: UploadFile = File(...), current_user=Depends(get_cu
     ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
     if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
         raise HTTPException(400, "Only JPG, PNG, WEBP, and GIF images are allowed")
+    # Validate MIME type
+    content_type = (file.content_type or "").lower()
+    if not any(t in content_type for t in ("image/", "application/octet-stream")):
+        raise HTTPException(400, "Invalid file type — expected image")
         
     filename = f"{uuid.uuid4()}{ext}"
     dest = UPLOAD_DIR / filename

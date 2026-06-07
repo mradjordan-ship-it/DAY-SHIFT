@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import aiofiles
 
 from .deps import (
@@ -14,6 +16,8 @@ from .deps import (
 from .models import RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody
 
 api = APIRouter()
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 def _validate_password(password: str) -> None:
@@ -27,8 +31,9 @@ def _validate_password(password: str) -> None:
 
 
 @api.post("/auth/register")
+@limiter.limit("5/minute")
 async def register(
-    request: Request,
+    request: Request,  # required by slowapi for rate limiting
     name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
@@ -78,7 +83,7 @@ async def register(
         dest.unlink(missing_ok=True)
         if "unique" in str(e).lower():
             raise HTTPException(400, "Email already registered")
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -90,6 +95,7 @@ async def register(
 
 
 @api.post("/auth/login")
+@limiter.limit("10/minute")
 def login(request: Request, body: LoginBody):
     conn = get_conn()
     cur = conn.cursor()
@@ -112,6 +118,7 @@ def login(request: Request, body: LoginBody):
 
 
 @api.post("/auth/forgot-password")
+@limiter.limit("3/minute")
 def forgot_password(body: ForgotPasswordBody, request: Request):
     conn = get_conn()
     cur = conn.cursor()
@@ -125,7 +132,8 @@ def forgot_password(body: ForgotPasswordBody, request: Request):
         return {"ok": True, "message": "If that email is registered, a reset link was created."}
 
     token = str(uuid.uuid4())
-    expires = datetime.utcnow() + timedelta(hours=1)
+    from datetime import timezone
+    expires = datetime.now(timezone.utc) + timedelta(hours=1)
     
     cur.execute(
         "UPDATE users SET reset_token = %s, reset_token_expires = %s WHERE id = %s",
@@ -145,7 +153,8 @@ def forgot_password(body: ForgotPasswordBody, request: Request):
 
 
 @api.post("/auth/reset-password")
-def reset_password(body: ResetPasswordBody):
+@limiter.limit("5/minute")
+def reset_password(body: ResetPasswordBody, request: Request):
     _validate_password(body.new_password)
     conn = get_conn()
     cur = conn.cursor()
@@ -162,7 +171,8 @@ def reset_password(body: ResetPasswordBody):
         raise HTTPException(400, "Invalid or expired token")
         
     # Check expiry (make sure we handle timezone-aware vs naive properly)
-    now = datetime.utcnow()
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
     # PostGres TIMESTAMPTZ comes back as a timezone-aware datetime in UTC
     # Since now is naive, we can just strip the tzinfo from the DB response for comparison
     expires_naive = user["reset_token_expires"].replace(tzinfo=None) if user["reset_token_expires"] else datetime.min
@@ -189,6 +199,7 @@ def me(current_user=Depends(get_current_user)):
     user = dict(current_user)
     for f in ("password_hash", "reset_token", "reset_token_expires"):
         user.pop(f, None)
+    # Keep email only for the user's own /auth/me (they need it for profile)
     return user
 
 

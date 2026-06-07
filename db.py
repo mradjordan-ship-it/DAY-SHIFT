@@ -279,6 +279,19 @@ def init_db():
         
         CREATE INDEX IF NOT EXISTS idx_post_boosts_active ON post_boosts(status, end_date) WHERE status = 'active';
         CREATE INDEX IF NOT EXISTS idx_post_analytics_video_date ON post_analytics(video_id, date);
+        
+        -- Additional performance indexes
+        CREATE INDEX IF NOT EXISTS idx_likes_video ON likes(video_id);
+        CREATE INDEX IF NOT EXISTS idx_likes_user ON likes(user_id);
+        CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON bookmarks(user_id);
+        CREATE INDEX IF NOT EXISTS idx_bookmarks_video ON bookmarks(video_id);
+        CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+        CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker_id);
+        CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id);
+        CREATE INDEX IF NOT EXISTS idx_tips_status ON tips(status);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+        CREATE INDEX IF NOT EXISTS idx_videos_created_at ON videos(created_at DESC);
     """)
 
     conn.commit()
@@ -301,7 +314,7 @@ def init_db():
                 ("Admin", admin_email, _admin_hash, "admin"),
             )
             conn.commit()
-            print(f"Created default admin user: {admin_email}")
+            print("Created default admin user")
 
     cur.close()
     conn.close()

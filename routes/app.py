@@ -10,7 +10,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from .deps import init_db
+from .deps import init_db, get_conn
 
 from .auth import api as auth_router
 from .videos import api as videos_router
@@ -33,12 +33,20 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
     try:
         init_db()
     except Exception as e:
-        print(f"[DB] Warning: Could not initialize DB: {e}")
+        print(f"[DB] FATAL: Could not initialize DB: {e}")
+        # Don't crash — let the app start so /api/health can report the DB is down
 
     app = FastAPI()
 
     # ── Rate limiting ─────────────────────────────────────────────────────
-    limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+    def _get_client_ip(request: Request) -> str:
+        """Use X-Forwarded-For when behind a proxy (Cloudflare), fallback to direct IP."""
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return get_remote_address(request)
+
+    limiter = Limiter(key_func=_get_client_ip, default_limits=["60/minute"])
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
@@ -56,7 +64,15 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
 
     # ── CORS ──────────────────────────────────────────────────────────────
     custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
-    allowed_origins = [f"https://{custom_domain}"] if custom_domain else ["*"]
+    allowed_origins = []
+    if custom_domain:
+        allowed_origins.append(f"https://{custom_domain}")
+    # Allow preview/sandbox origins
+    allowed_origins.extend([
+        "https://day-shift.workshop.build",
+        "http://localhost:3001",
+        "http://localhost:5173",
+    ])
 
     app.add_middleware(
         CORSMiddleware,
@@ -68,7 +84,15 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
 
     @app.get("/api/health")
     def health():
-        return {"ok": True}
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.close()
+            conn.close()
+            return {"ok": True, "db": "connected"}
+        except Exception:
+            return {"ok": False, "db": "unreachable"}
 
     app.include_router(auth_router, prefix="/api")
     app.include_router(videos_router, prefix="/api")
@@ -91,11 +115,14 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
         if os.path.isdir(assets_dir):
             app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+        _resolved_static = os.path.realpath(static_dir)
+
         @app.get("/{path:path}")
         async def spa_fallback(request: Request, path: str):
-            file_path = os.path.join(static_dir, path)
-            if path and os.path.isfile(file_path):
-                return FileResponse(file_path)
+            # Resolve and validate path stays within static_dir
+            resolved = os.path.realpath(os.path.join(static_dir, path))
+            if path and os.path.isfile(resolved) and resolved.startswith(_resolved_static + os.sep):
+                return FileResponse(resolved)
             return FileResponse(
                 os.path.join(static_dir, "index.html"),
                 headers={

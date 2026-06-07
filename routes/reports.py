@@ -1,14 +1,19 @@
 """Report / moderation routes for Day Shift Marketplace."""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from .deps import get_conn, get_current_user, require_admin
 from .models import ReportBody, ReviewReportBody
 
 api = APIRouter()
 
+limiter = Limiter(key_func=get_remote_address)
+
 
 @api.post("/reports")
-def create_report(body: ReportBody, current_user=Depends(get_current_user)):
+@limiter.limit("10/minute")
+def create_report(request: Request, body: ReportBody, current_user=Depends(get_current_user)):
     if body.target_type not in ("video", "user"):
         raise HTTPException(400, "target_type must be 'video' or 'user'")
     if body.reason not in ("harassment", "spam", "inappropriate", "fake", "other"):
@@ -62,7 +67,7 @@ def create_report(body: ReportBody, current_user=Depends(get_current_user)):
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -160,7 +165,7 @@ def admin_review_report(report_id: int, body: ReviewReportBody, admin=Depends(re
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()

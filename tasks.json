@@ -1,27 +1,62 @@
 [
   {
-    "content": "Research BLS API endpoints and Eater/RB RSS feed URLs",
-    "id": "1",
+    "content": "[SECURITY] Fix SPA path traversal in app.py",
+    "id": "s1-spa-path-traversal",
     "status": "completed"
   },
   {
-    "content": "Add BLS wage data integration to /api/ticker endpoint",
-    "id": "2",
+    "content": "[SECURITY] Restrict CORS origins",
+    "id": "s2-cors-restrict",
     "status": "completed"
   },
   {
-    "content": "Add RSS news feed integration (Eater + Restaurant Business) to /api/ticker",
-    "id": "3",
+    "content": "[SECURITY] Remove email from API responses (search, profile, etc)",
+    "id": "s3-email-exposure",
     "status": "completed"
   },
   {
-    "content": "Update TickerTape.tsx to render news items with source attribution and external links",
-    "id": "4",
+    "content": "[SECURITY] Fix SQL injection in webhooks INTERVAL + unparameterized queries",
+    "id": "s4-sql-injection",
     "status": "completed"
   },
   {
-    "content": "Build, test, verify in browser",
-    "id": "5",
+    "content": "[SECURITY] Enforce Stripe webhook signature verification",
+    "id": "s5-stripe-webhook-verify",
+    "status": "completed"
+  },
+  {
+    "content": "[SECURITY] Add per-route rate limits + X-Forwarded-For",
+    "id": "s6-rate-limits",
+    "status": "completed"
+  },
+  {
+    "content": "[PERF] Paginate feed endpoint + frontend cursor pagination",
+    "id": "p1-paginate-feed",
+    "status": "completed"
+  },
+  {
+    "content": "[PERF] Add missing database indexes",
+    "id": "p2-db-indexes",
+    "status": "completed"
+  },
+  {
+    "content": "[SECURITY] Add file upload type/size validation",
+    "id": "p3-upload-validation",
+    "status": "completed"
+  },
+  {
+    "content": "[ERROR] Fix bare excepts, add proper error handling, health check",
+    "id": "e1-error-handling",
+    "status": "completed"
+  },
+  {
+    "content": "[FRONTEND] Memory leaks, cleanup useEffect, missing cleanup",
+    "id": "f1-frontend-fixes",
+    "status": "completed"
+  },
+  {
+    "content": "[CLEANUP] Remove backup files, dead code, init_db hardening",
+    "id": "c1-cleanup",
     "status": "completed"
   }
 ]

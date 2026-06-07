@@ -24,13 +24,13 @@ def search_users(
 ):
     conn = get_conn()
     cur = conn.cursor()
-    query = """SELECT id, name, email, role, avatar_url, bio, location, cuisine_type, experience_level, avg_rating, total_shifts, created_at
+    query = """SELECT id, name, role, avatar_url, bio, location, cuisine_type, experience_level, avg_rating, total_shifts, created_at
                FROM users WHERE 1=1"""
     params = []
     if q:
-        query += " AND (name ILIKE %s OR bio ILIKE %s OR email ILIKE %s)"
+        query += " AND (name ILIKE %s OR bio ILIKE %s)"
         term = f"%{q}%"
-        params.extend([term, term, term])
+        params.extend([term, term])
     if role:
         query += " AND role = %s"
         params.append(role)
@@ -66,7 +66,7 @@ def get_user(user_id: int):
         raise HTTPException(404, "User not found")
     user = dict(user)
     # Remove sensitive fields
-    for field in ("password_hash", "reset_token", "reset_token_expires"):
+    for field in ("password_hash", "reset_token", "reset_token_expires", "email"):
         user.pop(field, None)
     if user.get("created_at"):
         user["created_at"] = user["created_at"].isoformat()
@@ -117,7 +117,7 @@ def update_profile(body: ProfileUpdateBody, current_user=Depends(get_current_use
 
     cur.close()
     conn.close()
-    for f in ("password_hash", "reset_token", "reset_token_expires"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email"):
         user.pop(f, None)
     if user.get("created_at"):
         user["created_at"] = user["created_at"].isoformat()
@@ -141,7 +141,7 @@ def delete_account(current_user=Depends(get_current_user)):
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -170,6 +170,6 @@ async def update_avatar(file: UploadFile = File(...), current_user=Depends(get_c
     conn.commit()
     cur.close()
     conn.close()
-    for f in ("password_hash", "reset_token", "reset_token_expires"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email"):
         user.pop(f, None)
     return user

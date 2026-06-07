@@ -132,8 +132,13 @@ def list_videos(
     cuisine_type: Optional[str] = None,
     category: Optional[str] = None,
     experience_level: Optional[str] = None,
+    cursor: Optional[str] = None,
+    limit: int = 20,
     current_user=Depends(get_optional_user),
 ):
+    # Clamp limit
+    limit = max(1, min(limit, 50))
+
     conn = get_conn()
     cur = conn.cursor()
 
@@ -172,6 +177,16 @@ def list_videos(
     else:
         query += " AND (v.scheduled_at IS NULL OR v.scheduled_at <= NOW())"
 
+    # Cursor pagination: only return posts older than the cursor timestamp
+    if cursor:
+        try:
+            from datetime import datetime as _dt
+            cursor_dt = _dt.fromisoformat(cursor)
+            query += " AND v.created_at < %s"
+            params.append(cursor_dt)
+        except (ValueError, TypeError):
+            pass  # Invalid cursor — ignore and start from top
+
     # check which ones the current user liked
     liked_ids = set()
     if current_user:
@@ -196,13 +211,19 @@ def list_videos(
             if s.get("created_at"): s["created_at"] = s["created_at"].isoformat()
 
     # Newest first for all feeds
-    query += " ORDER BY v.created_at DESC"
+    query += " ORDER BY v.created_at DESC LIMIT %s"
+    params.append(limit + 1)  # fetch one extra to know if there's a next page
 
     cur.execute(query, params)
     videos = [dict(r) for r in cur.fetchall()]
 
+    # Determine if there's a next page
+    has_more = len(videos) > limit
+    if has_more:
+        videos = videos[:limit]
+
     # Fetch active boosted posts and merge at the top (for the main "all" feed)
-    if not type and (not category or category == "all") and not q and not user_id:
+    if not type and (not category or category == "all") and not q and not user_id and not cursor:
         cur.execute("""
             SELECT v.*, u.name as author_name, u.avatar_url as author_avatar, u.avg_rating as author_rating,
                    u.role as author_role, u.is_admin as author_is_admin, u.is_advertiser as author_is_advertiser,
@@ -239,7 +260,14 @@ def list_videos(
             if not current_user or (current_user["role"] != "employer" and current_user["id"] != v["user_id"]):
                 v["pay_rate"] = ""
 
-    return videos
+    # Build next cursor from the last item's created_at
+    next_cursor = None
+    if has_more and videos:
+        last_created = videos[-1].get("created_at")
+        if last_created:
+            next_cursor = last_created if isinstance(last_created, str) else last_created.isoformat()
+
+    return {"videos": videos, "next_cursor": next_cursor, "has_more": has_more}
 
 
 @api.post("/videos")
@@ -285,7 +313,7 @@ def create_video(
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -316,7 +344,7 @@ def toggle_like(video_id: int, current_user=Depends(get_current_user)):
         conn.commit()
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()
@@ -409,7 +437,7 @@ async def update_video(
         raise
     except Exception as e:
         conn.rollback()
-        raise HTTPException(500, str(e))
+        raise HTTPException(500, "Internal error — please try again")
     finally:
         cur.close()
         conn.close()

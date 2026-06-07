@@ -50,7 +50,6 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
     }, 5000);
 
     return () => clearInterval(id);
-    return () => clearInterval(id);
   }, [token, matchId]);
 
   useEffect(() => {

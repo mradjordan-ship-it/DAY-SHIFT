@@ -5,3 +5,8 @@ __pycache__/
 *.pyc
 .DS_Store
 *.egg-info/
+# Backup files
+*.tar.gz
+*.zip
+# Plans (local only)
+plans/
