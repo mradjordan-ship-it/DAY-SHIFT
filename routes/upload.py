@@ -59,7 +59,7 @@ async def upload_image(file: UploadFile = File(...), current_user=Depends(get_cu
     content_type = (file.content_type or "").lower()
     if not any(t in content_type for t in ("image/", "application/octet-stream")):
         raise HTTPException(400, "Invalid file type — expected image")
-        
+
     filename = f"{uuid.uuid4()}{ext}"
     dest = UPLOAD_DIR / filename
     size = 0
@@ -70,7 +70,28 @@ async def upload_image(file: UploadFile = File(...), current_user=Depends(get_cu
                 dest.unlink(missing_ok=True)
                 raise HTTPException(400, f"Image exceeds {MAX_IMAGE_BYTES // (1024*1024)}MB limit")
             await f.write(chunk)
-    return {"url": f"/api/media/{filename}"}
+
+    # Optimize image: resize if >1200px, compress to JPEG quality 80
+    try:
+        from PIL import Image
+        img = Image.open(dest)
+        # Convert RGBA to RGB for JPEG
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        # Resize if either dimension > 1200
+        max_dim = 1200
+        if max(img.size) > max_dim:
+            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+        # Save as optimized JPEG
+        opt_filename = f"{uuid.uuid4()}.jpg"
+        opt_dest = UPLOAD_DIR / opt_filename
+        img.save(opt_dest, "JPEG", quality=80, optimize=True)
+        # Delete original, use optimized
+        dest.unlink(missing_ok=True)
+        return {"url": f"/api/media/{opt_filename}"}
+    except Exception:
+        # PIL failed — serve original
+        return {"url": f"/api/media/{filename}"}
 
 
 @api.api_route("/media/{filename}", methods=["GET", "HEAD"])

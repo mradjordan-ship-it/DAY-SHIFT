@@ -313,8 +313,8 @@ export default function App() {
     <AuthContext.Provider value={authCtx}>
       <NavContext.Provider value={navCtx}>
         <div className="h-screen overflow-hidden bg-background flex flex-col max-w-[430px] md:max-w-[768px] mx-auto relative shadow-2xl md:shadow-none border-x border-border/50">
-          {/* Cookie consent banner */}
-          <CookieConsent />
+          {/* Cookie consent banner — only after login, not on landing */}
+          {user && screen !== "landing" && !(screen === "feed" && !user) && <CookieConsent />}
 
           {/* Onboarding for new users */}
           {user && (
@@ -323,10 +323,12 @@ export default function App() {
             </Suspense>
           )}
 
-          {/* PWA install prompt */}
-          <Suspense fallback={null}>
-            <InstallPrompt />
-          </Suspense>
+          {/* PWA install prompt — only for logged-in users */}
+          {user && (
+            <Suspense fallback={null}>
+              <InstallPrompt />
+            </Suspense>
+          )}
 
           {/* Offline overlay */}
           {isOffline && (

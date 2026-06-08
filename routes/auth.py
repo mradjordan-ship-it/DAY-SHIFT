@@ -44,6 +44,31 @@ def _validate_password(password: str) -> None:
         raise HTTPException(400, "Password must contain at least one number")
 
 
+def _verify_recaptcha(token: str) -> None:
+    """Verify reCAPTCHA token. Skips if RECAPTCHA_SECRET_KEY not configured."""
+    secret = os.environ.get("RECAPTCHA_SECRET_KEY")
+    if not secret or not token:
+        # If no secret configured, skip verification (dev mode)
+        if not secret:
+            return
+        raise HTTPException(400, "reCAPTCHA verification required")
+    try:
+        import httpx
+        resp = httpx.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data={"secret": secret, "response": token},
+            timeout=10,
+        )
+        result = resp.json()
+        if not result.get("success"):
+            raise HTTPException(400, "reCAPTCHA verification failed")
+    except HTTPException:
+        raise
+    except Exception:
+        # If reCAPTCHA service is down, don't block registration
+        pass
+
+
 @api.post("/auth/register")
 @limiter.limit("5/minute")
 async def register(
@@ -56,7 +81,14 @@ async def register(
     terms_accepted: str = Form(...),
     privacy_accepted: str = Form(...),
     marketing_opt_in: str = Form(...),
+    recaptcha_token: str = Form(""),
 ):
+    # reCAPTCHA verification
+    _verify_recaptcha(recaptcha_token)
+
+    # Normalize email
+    email = email.strip().lower()
+
     _validate_password(password)
     if role not in ("worker", "employer"):
         raise HTTPException(400, "role must be 'worker' or 'employer'")
@@ -119,7 +151,7 @@ async def register(
 def login(request: Request, body: LoginBody):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE email = %s", (body.email,))
+    cur.execute("SELECT * FROM users WHERE email = %s", (body.email.strip().lower(),))
     user = cur.fetchone()
     cur.close()
     conn.close()

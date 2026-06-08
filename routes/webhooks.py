@@ -20,14 +20,19 @@ async def stripe_webhook(request: Request):
     if webhook_secret and sig_header:
         try:
             event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-        except Exception as e:
-            raise HTTPException(400, f"Webhook verification failed: {str(e)}")
-    else:
-        # No webhook secret configured — parse payload directly (dev/Stripe CLI mode)
+        except Exception:
+            raise HTTPException(400, "Webhook verification failed")
+    elif not webhook_secret:
+        # No webhook secret configured — reject in production, allow in dev
+        if os.environ.get("WORKSHOP_CUSTOM_DOMAIN"):
+            raise HTTPException(500, "Webhook secret not configured")
+        # Dev mode: parse payload directly
         try:
             event = stripe.Event.construct_from(await request.json(), stripe.api_key)
-        except Exception as e:
-            raise HTTPException(400, f"Invalid payload: {str(e)}")
+        except Exception:
+            raise HTTPException(400, "Invalid payload")
+    else:
+        raise HTTPException(400, "Missing stripe-signature header")
 
     # Handle checkout.session.completed
     if event.get("type") == "checkout.session.completed":

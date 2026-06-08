@@ -301,6 +301,12 @@ def admin_suspend_user(user_id: int, body: dict, admin=Depends(require_admin)):
     conn.commit()
     cur.close()
     conn.close()
+    # Notify user via push
+    try:
+        from .push import send_push_to_user
+        send_push_to_user(user_id, "Account Suspended", reason, "/profile")
+    except Exception:
+        pass
     return {"ok": True}
 
 
@@ -312,4 +318,10 @@ def admin_unsuspend_user(user_id: int, admin=Depends(require_admin)):
     conn.commit()
     cur.close()
     conn.close()
+    # Notify user via push
+    try:
+        from .push import send_push_to_user
+        send_push_to_user(user_id, "Account Restored", "Your account has been reactivated.", "/feed")
+    except Exception:
+        pass
     return {"ok": True}

@@ -58,16 +58,18 @@ def search_users(
 def get_user(user_id: int):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    cur.execute(
+        """SELECT id, name, role, avatar_url, bio, location, cuisine_type, experience_level,
+                  avg_rating, total_shifts, is_advertiser, created_at
+           FROM users WHERE id = %s""",
+        (user_id,),
+    )
     user = cur.fetchone()
     cur.close()
     conn.close()
     if not user:
         raise HTTPException(404, "User not found")
     user = dict(user)
-    # Remove sensitive fields
-    for field in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token", "email"):
-        user.pop(field, None)
     if user.get("created_at"):
         user["created_at"] = user["created_at"].isoformat()
     return user

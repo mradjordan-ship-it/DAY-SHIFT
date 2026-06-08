@@ -75,6 +75,20 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # CSP — allow inline styles/scripts (needed for Vite/Tailwind), self for images/media, Stripe for frames
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://us.i.posthog.com https://us.posthog.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob: https:; "
+            "media-src 'self' blob: https:; "
+            "frame-src https://js.stripe.com https://hooks.stripe.com; "
+            "connect-src 'self' https://api.stripe.com https://us.i.posthog.com https://us.posthog.com https://o*.ingest.sentry.io; "
+            "font-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self';"
+        )
         return response
 
     # ── CORS ──────────────────────────────────────────────────────────────

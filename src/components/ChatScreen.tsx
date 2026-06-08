@@ -3,7 +3,7 @@ import type { Message, Match } from "../types";
 import { useAuth } from "../App";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, Flag } from "lucide-react";
 import { useNav } from "../App";
 
 export default function ChatScreen({ matchId }: { matchId: number }) {
@@ -14,6 +14,10 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("other");
+  const [reportComment, setReportComment] = useState("");
+  const [reportSent, setReportSent] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,6 +92,7 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
   const isWorker = match ? user.id === match.worker_id : false;
   const otherName = match ? (isWorker ? match.employer_name : match.worker_name) : "";
   const otherAvatar = match ? (isWorker ? match.employer_avatar : match.worker_avatar) : "";
+  const otherUserId = match ? (isWorker ? match.employer_id : match.worker_id) : null;
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
@@ -140,6 +145,15 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
             </p>
           )}
         </div>
+        {match && otherUserId && (
+          <button
+            onClick={() => { setShowReport(true); setReportSent(false); setReportComment(""); setReportReason("other"); }}
+            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+            aria-label="Report user"
+          >
+            <Flag size={18} />
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -224,6 +238,67 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
           </Button>
         </div>
       </div>
+      )}
+      {/* Report modal */}
+      {showReport && otherUserId && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6" onClick={() => setShowReport(false)}>
+          <div className="bg-card border border-border rounded-2xl p-5 w-full max-w-sm space-y-3" onClick={(e) => e.stopPropagation()}>
+            {reportSent ? (
+              <div className="text-center py-4">
+                <p className="text-primary text-lg font-semibold">Report Submitted</p>
+                <p className="text-muted-foreground text-sm mt-1">We'll review this account</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-foreground font-semibold text-sm">Report {otherName}</h3>
+                <p className="text-xs text-muted-foreground">Select a reason for your report:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "harassment", label: "Harassment" },
+                    { value: "spam", label: "Spam" },
+                    { value: "inappropriate", label: "Inappropriate" },
+                    { value: "other", label: "Other" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setReportReason(opt.value)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors ${reportReason === opt.value ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground hover:bg-muted"}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={reportComment}
+                  onChange={(e) => setReportComment(e.target.value)}
+                  placeholder="Additional details (optional)"
+                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground resize-none h-16"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => setShowReport(false)} className="flex-1 px-4 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground">Cancel</button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/reports", {
+                          method: "POST",
+                          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                          body: JSON.stringify({ target_type: "user", target_id: otherUserId, reason: reportReason, comment: reportComment || null }),
+                        });
+                        if (res.ok) {
+                          setReportSent(true);
+                          setTimeout(() => { setShowReport(false); setReportSent(false); setReportComment(""); }, 1500);
+                        }
+                      } catch {}
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground"
+                  >
+                    Submit Report
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

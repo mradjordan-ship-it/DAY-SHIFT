@@ -54,7 +54,7 @@ def create_tip_checkout(body: dict, request: Request, current_user=Depends(get_c
             },
         )
     except Exception as e:
-        raise HTTPException(500, f"Stripe error: {str(e)}")
+        raise HTTPException(500, "Payment processing failed. Please try again.")
 
     # Record the tip as pending
     conn = get_conn()

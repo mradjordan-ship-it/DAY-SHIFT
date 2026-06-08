@@ -40,7 +40,7 @@ export default function CookieConsent() {
   if (!visible || choice) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-3 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-0 left-0 right-0 z-[200] p-3 pb-20 animate-in slide-in-from-bottom-4 duration-300">
       <div className="max-w-lg mx-auto bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-3">
         <div className="flex items-start gap-3">
           <div className="shrink-0 w-8 h-8 rounded-full bg-amber-500/15 flex items-center justify-center mt-0.5">

@@ -149,7 +149,7 @@ def create_boost(body: BoostBody, request: Request, current_user=Depends(get_cur
     except Exception as e:
         cur.close()
         conn.close()
-        raise HTTPException(500, f"Stripe error: {str(e)}")
+        raise HTTPException(500, "Payment processing failed. Please try again.")
 
     # Store Stripe session ID
     cur.execute(

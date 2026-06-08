@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Request
 import aiofiles
 
 from .deps import (
@@ -341,7 +341,7 @@ def create_video(
         if auto_flag_reason:
             cur.execute(
                 """INSERT INTO reports (reporter_id, target_type, target_id, reason, comment, status)
-                   VALUES (0, 'video', %s, 'auto-flagged', %s, 'open')""",
+                   VALUES (NULL, 'video', %s, 'auto-flagged', %s, 'open')""",
                 (video["id"], auto_flag_reason),
             )
             # Notify admins via push
@@ -373,6 +373,12 @@ def create_video(
 def toggle_like(video_id: int, current_user=Depends(get_current_user)):
     conn = get_conn()
     cur = conn.cursor()
+    # Verify video exists
+    cur.execute("SELECT id FROM videos WHERE id = %s", (video_id,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        raise HTTPException(404, "Video not found")
     try:
         cur.execute("SELECT id FROM likes WHERE user_id=%s AND video_id=%s", (current_user["id"], video_id))
         existing = cur.fetchone()

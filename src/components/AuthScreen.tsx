@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useAuth, useNav } from "../App";
 import type { User } from "../types";
+import ReCAPTCHA from "react-google-recaptcha";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,8 @@ export default function AuthScreen({
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [legalDialog, setLegalDialog] = useState<"terms" | "privacy" | null>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   // ── Email verification: auto-verify on mount ──
   const [verifyState, setVerifyState] = useState<"verifying" | "success" | "error">("verifying");
@@ -161,6 +164,7 @@ export default function AuthScreen({
       fd.append("image", imageFile);
       fd.append("terms_accepted", String(termsAccepted));
       fd.append("privacy_accepted", String(privacyAccepted));
+      if (recaptchaToken) fd.append("recaptcha_token", recaptchaToken);
 
       const res = await fetch("/api/auth/register", { method: "POST", body: fd });
       const data = await res.json();
@@ -615,6 +619,20 @@ export default function AuthScreen({
                 Continue to Feed →
               </button>
             )}
+          </div>
+        )}
+
+        {/* reCAPTCHA for registration */}
+        {mode === "register" && (
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              ref={recaptchaRef}
+              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY as string || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+              onChange={(token) => setRecaptchaToken(token)}
+              onExpired={() => setRecaptchaToken(null)}
+              theme="dark"
+              size="compact"
+            />
           </div>
         )}
 
