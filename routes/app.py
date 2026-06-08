@@ -37,13 +37,16 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
     # ── Sentry error monitoring ───────────────────────────────────────────
     sentry_dsn = os.environ.get("SENTRY_DSN")
     if sentry_dsn:
-        sentry_sdk.init(
-            dsn=sentry_dsn,
-            integrations=[FastApiIntegration()],
-            traces_sample_rate=0.1,
-            environment=os.environ.get("SENTRY_ENV", "production"),
-            release=os.environ.get("SENTRY_RELEASE", "1.0.0"),
-        )
+        try:
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                integrations=[FastApiIntegration()],
+                traces_sample_rate=0.1,
+                environment=os.environ.get("SENTRY_ENV", "production"),
+                release=os.environ.get("SENTRY_RELEASE", "1.0.0"),
+            )
+        except Exception as e:
+            print(f"[Sentry] Failed to initialize (bad DSN?): {e}")
 
     try:
         init_db()
