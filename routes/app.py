@@ -1,6 +1,9 @@
 """FastAPI app factory for Day Shift Marketplace."""
 import os
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,6 +34,17 @@ from .push import api as push_router
 
 
 def create_app(static_dir: str = "./dist") -> FastAPI:
+    # ── Sentry error monitoring ───────────────────────────────────────────
+    sentry_dsn = os.environ.get("SENTRY_DSN")
+    if sentry_dsn:
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            integrations=[FastApiIntegration()],
+            traces_sample_rate=0.1,
+            environment=os.environ.get("SENTRY_ENV", "production"),
+            release=os.environ.get("SENTRY_RELEASE", "1.0.0"),
+        )
+
     try:
         init_db()
     except Exception as e:

@@ -7,6 +7,15 @@ from .models import MessageBody
 api = APIRouter()
 
 
+def _is_blocked(cur, user_a: int, user_b: int) -> bool:
+    """Check if either user has blocked the other."""
+    cur.execute(
+        "SELECT 1 FROM user_blocks WHERE (blocker_id=%s AND blocked_id=%s) OR (blocker_id=%s AND blocked_id=%s)",
+        (user_a, user_b, user_b, user_a),
+    )
+    return cur.fetchone() is not None
+
+
 @api.get("/matches/{match_id}/messages")
 def get_messages(match_id: int, current_user=Depends(get_current_user)):
     conn = get_conn()
@@ -18,6 +27,12 @@ def get_messages(match_id: int, current_user=Depends(get_current_user)):
         raise HTTPException(403, "Not part of this match")
     if dict(match)["status"] == "pending":
         raise HTTPException(400, "Messages are available after the match is accepted")
+
+    # Block check
+    match_dict = dict(match)
+    other_id = match_dict["employer_id"] if current_user["id"] == match_dict["worker_id"] else match_dict["worker_id"]
+    if _is_blocked(cur, current_user["id"], other_id):
+        raise HTTPException(403, "Cannot message this user — block active")
 
     cur.execute(
         """SELECT m.*, u.name as sender_name, u.avatar_url as sender_avatar
@@ -45,6 +60,12 @@ def send_message(match_id: int, body: MessageBody, current_user=Depends(get_curr
         raise HTTPException(403, "Not part of this match")
     if dict(match)["status"] == "pending":
         raise HTTPException(400, "Messages are available after the match is accepted")
+
+    # Block check
+    match_dict = dict(match)
+    other_id = match_dict["employer_id"] if current_user["id"] == match_dict["worker_id"] else match_dict["worker_id"]
+    if _is_blocked(cur, current_user["id"], other_id):
+        raise HTTPException(403, "Cannot message this user — block active")
 
     try:
         cur.execute(

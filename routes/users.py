@@ -126,16 +126,19 @@ def update_profile(body: ProfileUpdateBody, current_user=Depends(get_current_use
 
 @api.delete("/users/me")
 def delete_account(current_user=Depends(get_current_user)):
-    """Permanently delete the user account and all associated data."""
+    """Permanently delete the user account and all associated data (GDPR/CCPA)."""
     conn = get_conn()
     cur = conn.cursor()
     try:
         user_id = current_user["id"]
-        # Cascade: messages, likes, matches, reviews, videos, then user
+        # Cascade: all user data
         cur.execute("DELETE FROM messages WHERE sender_id = %s", (user_id,))
         cur.execute("DELETE FROM likes WHERE user_id = %s", (user_id,))
         cur.execute("DELETE FROM matches WHERE worker_id = %s OR employer_id = %s", (user_id, user_id))
         cur.execute("DELETE FROM reviews WHERE reviewer_id = %s OR reviewee_id = %s", (user_id, user_id))
+        cur.execute("DELETE FROM bookmarks WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM push_subscriptions WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM reports WHERE reporter_id = %s", (user_id,))
         cur.execute("DELETE FROM videos WHERE user_id = %s", (user_id,))
         cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()

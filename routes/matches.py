@@ -101,6 +101,14 @@ def create_match(body: MatchBody, current_user=Depends(get_current_user)):
     if worker_id == employer_id:
         raise HTTPException(400, "Cannot match with yourself")
 
+    # Block check — either party can block the other
+    cur.execute(
+        "SELECT 1 FROM user_blocks WHERE (blocker_id=%s AND blocked_id=%s) OR (blocker_id=%s AND blocked_id=%s)",
+        (worker_id, employer_id, employer_id, worker_id),
+    )
+    if cur.fetchone():
+        raise HTTPException(403, "Cannot match with this user")
+
     # Check for duplicate
     cur.execute(
         "SELECT id FROM matches WHERE worker_id=%s AND employer_id=%s AND status != 'cancelled'",

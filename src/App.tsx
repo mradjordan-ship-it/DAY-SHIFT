@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback, useRef, Suspense, lazy } from "react";
 import type { User, Screen, Match } from "./types";
 import { initAnalytics, identifyUser, resetUser, trackEvent } from "./lib/analytics";
+import CookieConsent from "./components/CookieConsent";
 
 // ─── Auth Context ─────────────────────────────────────────────────────────────
 interface AuthCtx {
@@ -67,6 +68,9 @@ const AdminScreen = lazy(() => import("./components/AdminScreen"));
 const SupportScreen = lazy(() => import("./components/SupportScreen"));
 const SponsorScreen = lazy(() => import("./components/SponsorScreen"));
 const LegalScreen = lazy(() => import("./components/LegalScreen"));
+const OnboardingModal = lazy(() => import("./components/OnboardingModal"));
+const InstallPrompt = lazy(() => import("./components/InstallPrompt"));
+const OfflineScreen = lazy(() => import("./components/OfflineScreen"));
 const OnboardingScreen = lazy(() => import("./components/OnboardingScreen"));
 const AboutScreen = lazy(() => import("./components/AboutScreen"));
 const BoostScreen = lazy(() => import("./components/BoostScreen"));
@@ -106,6 +110,19 @@ export default function App() {
   const [navHidden, setNavHidden] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>("default");
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Online/offline detection
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
 
   // Request notification permission
   const requestNotifs = async () => {
@@ -296,6 +313,27 @@ export default function App() {
     <AuthContext.Provider value={authCtx}>
       <NavContext.Provider value={navCtx}>
         <div className="h-screen overflow-hidden bg-background flex flex-col max-w-[430px] md:max-w-[768px] mx-auto relative shadow-2xl md:shadow-none border-x border-border/50">
+          {/* Cookie consent banner */}
+          <CookieConsent />
+
+          {/* Onboarding for new users */}
+          {user && (
+            <Suspense fallback={null}>
+              <OnboardingModal />
+            </Suspense>
+          )}
+
+          {/* PWA install prompt */}
+          <Suspense fallback={null}>
+            <InstallPrompt />
+          </Suspense>
+
+          {/* Offline overlay */}
+          {isOffline && (
+            <Suspense fallback={null}>
+              <OfflineScreen />
+            </Suspense>
+          )}
           {/* Header — hidden on about screen and landing page for non-logged users */}
           {screen !== "about" && screen !== "landing" && !(screen === "feed" && !user) && (
           <header className="flex-shrink-0 z-50 bg-background/90 backdrop-blur-md border-b border-border px-4 md:px-6 py-3 flex items-center justify-between">

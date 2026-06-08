@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dayshift-v2';
+const CACHE_NAME = 'dayshift-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

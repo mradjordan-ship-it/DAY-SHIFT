@@ -1,62 +1,42 @@
 [
   {
-    "content": "[SECURITY] Fix SPA path traversal in app.py",
-    "id": "s1-spa-path-traversal",
+    "content": "Add error monitoring (Sentry) — backend + frontend",
+    "id": "1",
     "status": "completed"
   },
   {
-    "content": "[SECURITY] Restrict CORS origins",
-    "id": "s2-cors-restrict",
+    "content": "Add analytics (PostHog) — event tracking",
+    "id": "2",
     "status": "completed"
   },
   {
-    "content": "[SECURITY] Remove email from API responses (search, profile, etc)",
-    "id": "s3-email-exposure",
+    "content": "Password strength enforcement on registration",
+    "id": "3",
     "status": "completed"
   },
   {
-    "content": "[SECURITY] Fix SQL injection in webhooks INTERVAL + unparameterized queries",
-    "id": "s4-sql-injection",
+    "content": "Account deletion flow (GDPR/CCPA legal requirement)",
+    "id": "4",
     "status": "completed"
   },
   {
-    "content": "[SECURITY] Enforce Stripe webhook signature verification",
-    "id": "s5-stripe-webhook-verify",
+    "content": "Cookie consent banner",
+    "id": "5",
     "status": "completed"
   },
   {
-    "content": "[SECURITY] Add per-route rate limits + X-Forwarded-For",
-    "id": "s6-rate-limits",
+    "content": "User blocking + abuse protections",
+    "id": "6",
     "status": "completed"
   },
   {
-    "content": "[PERF] Paginate feed endpoint + frontend cursor pagination",
-    "id": "p1-paginate-feed",
+    "content": "Onboarding walkthrough for new users",
+    "id": "7",
     "status": "completed"
   },
   {
-    "content": "[PERF] Add missing database indexes",
-    "id": "p2-db-indexes",
-    "status": "completed"
-  },
-  {
-    "content": "[SECURITY] Add file upload type/size validation",
-    "id": "p3-upload-validation",
-    "status": "completed"
-  },
-  {
-    "content": "[ERROR] Fix bare excepts, add proper error handling, health check",
-    "id": "e1-error-handling",
-    "status": "completed"
-  },
-  {
-    "content": "[FRONTEND] Memory leaks, cleanup useEffect, missing cleanup",
-    "id": "f1-frontend-fixes",
-    "status": "completed"
-  },
-  {
-    "content": "[CLEANUP] Remove backup files, dead code, init_db hardening",
-    "id": "c1-cleanup",
+    "content": "PWA install prompt + offline fallback page",
+    "id": "8",
     "status": "completed"
   }
 ]

@@ -12,6 +12,9 @@ export default defineConfig({
   define: {
     "import.meta.env.VITE_POSTHOG_KEY": JSON.stringify(process.env.VITE_POSTHOG_KEY || ""),
     "import.meta.env.VITE_POSTHOG_HOST": JSON.stringify(process.env.VITE_POSTHOG_HOST || ""),
+    "import.meta.env.VITE_SENTRY_DSN": JSON.stringify(process.env.VITE_SENTRY_DSN || ""),
+    "import.meta.env.VITE_SENTRY_ENV": JSON.stringify(process.env.VITE_SENTRY_ENV || "production"),
+    "import.meta.env.VITE_SENTRY_RELEASE": JSON.stringify(process.env.VITE_SENTRY_RELEASE || "1.0.0"),
   },
   server: {
     strictPort: true,

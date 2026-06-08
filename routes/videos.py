@@ -177,6 +177,15 @@ def list_videos(
     else:
         query += " AND (v.scheduled_at IS NULL OR v.scheduled_at <= NOW())"
 
+    # Exclude videos from blocked users
+    if current_user:
+        cur.execute("SELECT blocked_id FROM user_blocks WHERE blocker_id = %s", (current_user["id"],))
+        blocked_ids = [r["blocked_id"] for r in cur.fetchall()]
+        if blocked_ids:
+            placeholders = ",".join(["%s"] * len(blocked_ids))
+            query += f" AND v.user_id NOT IN ({placeholders})"
+            params.extend(blocked_ids)
+
     # Cursor pagination: only return posts older than the cursor timestamp
     if cursor:
         try:

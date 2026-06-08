@@ -110,13 +110,13 @@
 
 /* Ticker tape fade animation */
 @keyframes ticker-fade {
-  0% { opacity: 0; transform: translateY(6px); }
-  10% { opacity: 1; transform: translateY(0); }
-  85% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-4px); }
+  0% { opacity: 0; transform: translateY(8px); }
+  8% { opacity: 1; transform: translateY(0); }
+  88% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-6px); }
 }
 .animate-ticker-fade {
-  animation: ticker-fade 4s ease-in-out;
+  animation: ticker-fade 9.5s ease-in-out;
 }
 
 /* Bottom nav active indicator */

@@ -185,6 +185,21 @@ export default function AuthScreen({
   const canSubmitRegister =
     !!imageFile && termsAccepted && privacyAccepted;
 
+  // Password strength for register form
+  const pwStrength = (() => {
+    const p = form.password;
+    if (!p) return { score: 0, label: "", color: "" };
+    let score = 0;
+    if (p.length >= 8) score++;
+    if (p.length >= 12) score++;
+    if (/[a-zA-Z]/.test(p)) score++;
+    if (/[0-9]/.test(p)) score++;
+    if (/[^a-zA-Z0-9]/.test(p)) score++;
+    if (score <= 2) return { score, label: "Weak", color: "bg-red-500" };
+    if (score <= 3) return { score, label: "Fair", color: "bg-amber-500" };
+    return { score, label: "Strong", color: "bg-green-500" };
+  })();
+
   return (
     <div className="h-full flex flex-col bg-background overflow-y-auto [overflow-y:scroll] [-webkit-overflow-scrolling:touch]">
       {/* ── Verify Email Screen ── */}
@@ -324,7 +339,7 @@ export default function AuthScreen({
                   onChange={(e) => set("password", e.target.value)}
                   placeholder="Password"
                   required
-                  minLength={6}
+                  minLength={8}
                   className="bg-secondary border-border h-11 pr-10"
                 />
                 <button
@@ -336,6 +351,18 @@ export default function AuthScreen({
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {form.password && mode === "register" && (
+                <div className="space-y-1 mt-1">
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= pwStrength.score ? pwStrength.color : "bg-muted"}`} />
+                    ))}
+                  </div>
+                  <p className={`text-xs ${pwStrength.score <= 2 ? "text-red-500" : pwStrength.score <= 3 ? "text-amber-500" : "text-green-500"}`}>
+                    {pwStrength.label} — 8+ chars, a letter, a number
+                  </p>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <button
                   type="button"
