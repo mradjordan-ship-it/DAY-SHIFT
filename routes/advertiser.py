@@ -118,7 +118,8 @@ def create_boost(body: BoostBody, request: Request, current_user=Depends(get_cur
         raise HTTPException(500, "Internal error — please try again")
 
     # Get the origin for Stripe success/cancel URLs
-    origin = request.headers.get("origin") or "https://day-shift.workshop.build"
+    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
+    origin = f"https://{custom_domain}" if custom_domain else (request.headers.get("origin") or "https://day-shift.workshop.build")
 
     # Create Stripe Checkout Session
     try:
@@ -201,6 +202,27 @@ def cancel_boost(boost_id: int, current_user=Depends(get_current_user)):
     cur.close()
     conn.close()
     return {"ok": True}
+
+
+@api.post("/advertiser/portal")
+def customer_portal(request: Request, current_user=Depends(get_current_user)):
+    """Create a Stripe Customer Portal session for managing payment methods."""
+    if not os.environ.get("STRIPE_SECRET_KEY"):
+        raise HTTPException(500, "Stripe is not configured")
+    import stripe
+    stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
+
+    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
+    origin = f"https://{custom_domain}" if custom_domain else (request.headers.get("origin") or "https://day-shift.workshop.build")
+
+    try:
+        session = stripe.billing_portal.Session.create(
+            customer=None,  # No customer ID stored yet — could be added later
+            return_url=f"{origin}/profile",
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(500, f"Stripe portal error: {str(e)}")
 
 
 @api.get("/advertiser/analytics")

@@ -24,6 +24,9 @@ def create_tip_checkout(body: dict, request: Request, current_user=Depends(get_c
     stripe.api_key = STRIPE_SECRET
 
     origin = request.headers.get("origin") or "https://day-shift.workshop.build"
+    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
+    if custom_domain:
+        origin = f"https://{custom_domain}"
     amount_dollars = amount / 100
 
     try:
