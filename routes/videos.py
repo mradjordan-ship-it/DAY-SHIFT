@@ -310,6 +310,41 @@ def create_video(
             (current_user["id"], video_url or None, image_url or None, type, post_type, category, price, event_date, event_time, scheduled_at or None, aspect_ratio, title or None, description, cuisine_type, pay_rate, hours, experience_level, location),
         )
         video = dict(cur.fetchone())
+
+        # Auto-flag: if account is less than 1 hour old and this is their first video,
+        # create an auto-flag report for admin review
+        from datetime import timezone
+        account_age = datetime.now(timezone.utc) - current_user["created_at"].replace(tzinfo=timezone.utc) if current_user.get("created_at") else None
+        auto_flag_reason = None
+        if account_age and account_age.total_seconds() < 3600:  # < 1 hour
+            cur.execute("SELECT COUNT(*) FROM videos WHERE user_id = %s", (current_user["id"],))
+            video_count = cur.fetchone()["count"]
+            if video_count <= 1:  # First video
+                auto_flag_reason = "Auto-flagged: first post from new account (<1hr old)"
+
+        # Check for profanity in title/description
+        PROFANITY_LIST = ["fuck", "shit", "bitch", "asshole", "nigger", "nigga", "cunt", "dick", "pussy", "fag"]
+        text_to_check = f"{title or ''} {description}".lower()
+        found_profanity = [w for w in PROFANITY_LIST if w in text_to_check]
+        if found_profanity:
+            auto_flag_reason = f"Auto-flagged: profanity detected ({found_profanity[0]})"
+
+        if auto_flag_reason:
+            cur.execute(
+                """INSERT INTO reports (reporter_id, target_type, target_id, reason, comment, status)
+                   VALUES (0, 'video', %s, 'auto-flagged', %s, 'open')""",
+                (video["id"], auto_flag_reason),
+            )
+            # Notify admins via push
+            try:
+                from .push import send_push_to_users
+                cur.execute("SELECT id FROM users WHERE is_admin = TRUE")
+                admin_ids = [r["id"] for r in cur.fetchall()]
+                if admin_ids:
+                    send_push_to_users(admin_ids, "Content Flagged 🚨", auto_flag_reason, "/admin")
+            except Exception:
+                pass
+
         conn.commit()
     except Exception as e:
         conn.rollback()

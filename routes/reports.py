@@ -65,6 +65,19 @@ def create_report(request: Request, body: ReportBody, current_user=Depends(get_c
                     )
 
         conn.commit()
+
+        # Notify admins via push notification about the new report
+        try:
+            from .push import send_push_to_users
+            admin_cur = conn.cursor()
+            admin_cur.execute("SELECT id FROM users WHERE is_admin = TRUE")
+            admin_ids = [r["id"] for r in admin_cur.fetchall()]
+            admin_cur.close()
+            if admin_ids:
+                label = "user" if body.target_type == "user" else "post"
+                send_push_to_users(admin_ids, "New Report 🚩", f"{body.reason} ({label})", "/admin")
+        except Exception:
+            pass
     except Exception as e:
         conn.rollback()
         raise HTTPException(500, "Internal error — please try again")

@@ -12,11 +12,11 @@
   {
     "content": "[P1] Wire Stripe payments — boost checkout, tip flow, webhook handling",
     "id": "3-stripe-payments",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "[P2] Content moderation — auto-flagging, report queue, admin review UI",
     "id": "4-content-moderation",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
