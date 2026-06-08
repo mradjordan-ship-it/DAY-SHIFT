@@ -73,22 +73,22 @@ def seed():
     worker_data = [
         ("Marcus Johnson", "marcus@cook.com", "worker",
          "Line cook with 8 years in NYC restaurants. Specializing in Southern cuisine and BBQ.",
-         "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=200&h=200&fit=crop&crop=face", 4.7, 45, "Brooklyn, NY", "Southern, BBQ, Comfort Food", "8+ years", "Full-time / Flex"),
+         "https://images.unsplash.com/photo-1518882570151-157128e78fa1?w=200&h=200&fit=crop&crop=face", 4.7, 45, "Brooklyn, NY", "Southern, BBQ, Comfort Food", "8+ years", "Full-time / Flex"),
         ("Priya Patel", "priya@cook.com", "worker",
          "Pastry chef trained in French technique. Available for pop-ups and catering gigs.",
          "https://images.unsplash.com/photo-1601455763557-db1bea8a9a5a?w=200&h=200&fit=crop&crop=face", 4.9, 32, "Queens, NY", "French, Pastry, Baking", "5 years", "Part-time"),
         ("DeShawn Williams", "deshawn@cook.com", "worker",
          "Sushi chef looking for evening shifts. Fast prep, clean station every time.",
-         "https://images.unsplash.com/photo-1508341595667-9c136f6837f1?w=200&h=200&fit=crop&crop=face", 4.3, 28, "Manhattan, NY", "Japanese, Sushi, Asian Fusion", "6 years", "Evenings / Nights"),
+         "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?w=200&h=200&fit=crop&crop=face", 4.3, 28, "Manhattan, NY", "Japanese, Sushi, Asian Fusion", "6 years", "Evenings / Nights"),
         ("Sofia Rodriguez", "sofia@cook.com", "worker",
          "Line cook / grill specialist. Bilingual English/Spanish. Strong team player.",
-         "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop&crop=face", 4.8, 51, "Bronx, NY", "Latin, Grill, Mexican", "10+ years", "Full-time"),
+         "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face", 4.8, 51, "Bronx, NY", "Latin, Grill, Mexican", "10+ years", "Full-time"),
         ("Aiden Chen", "aiden@cook.com", "worker",
          "Recent culinary grad hungry for experience. Quick learner, adaptable to any station.",
          "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop&crop=face", 4.1, 12, "Harlem, NY", "Italian, Pan-Asian, Modern American", "1 year", "Flexible"),
         ("Keisha Brown", "keisha@cook.com", "worker",
          "Sous chef transitioning to freelance. Banquet and catering specialist.",
-         "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&h=200&fit=crop&crop=face", 4.6, 67, "Jersey City, NJ", "Catering, Soul Food, Banquets", "12 years", "Freelance"),
+         "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&h=200&fit=crop&crop=face", 4.6, 67, "Jersey City, NJ", "Catering, Soul Food, Banquets", "12 years", "Freelance"),
     ]
 
     for name, email, role, bio, avatar, rating, shifts, loc, cuisine, exp, hrs in worker_data:
@@ -108,19 +108,19 @@ def seed():
     employer_data = [
         ("The Golden Spoon", "golden@spoon.com", "employer",
          "Upscale Southern fusion restaurant in Midtown. Looking for reliable line cooks.",
-         "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop&crop=face", 4.5, 200, "Midtown, Manhattan", "Southern Fusion, Fine Dining", "$22-28/hr", "Dinner service 4pm-12am"),
+         "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=200&h=200&fit=crop&crop=face", 4.5, 200, "Midtown, Manhattan", "Southern Fusion, Fine Dining", "$22-28/hr", "Dinner service 4pm-12am"),
         ("Harlem Eats Kitchen", "harlem@eats.com", "employer",
          "Fast-casual Caribbean spot in Harlem. Growing team, flexible schedules.",
-         "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop&crop=face", 4.2, 85, "Harlem, NY", "Caribbean, Jamaican, Fast Casual", "$18-22/hr", "Lunch + Dinner shifts"),
+         "https://images.unsplash.com/photo-1508341595667-9c136f6837f1?w=200&h=200&fit=crop&crop=face", 4.2, 85, "Harlem, NY", "Caribbean, Jamaican, Fast Casual", "$18-22/hr", "Lunch + Dinner shifts"),
         ("Sakura NYC", "sakura@nyc.com", "employer",
          "Authentic Japanese restaurant near Penn Station. Seeking experienced sushi prep.",
          "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200&h=200&fit=crop&crop=face", 4.7, 120, "Penn Station area, NY", "Japanese, Sushi, Ramen", "$25-32/hr", "Nights 5pm-2am"),
         ("Brooklyn Bakehouse", "bake@brooklyn.com", "employer",
          "Artisan bakery and café. Need pastry help for morning prep and weekend rushes.",
-         "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face", 4.8, 95, "Williamsburg, Brooklyn", "Bakery, Pastry, Café", "$20-25/hr", "Mornings 5am-1pm"),
+         "https://images.unsplash.com/photo-1527201987695-67c06571957e?w=200&h=200&fit=crop&crop=face", 4.8, 95, "Williamsburg, Brooklyn", "Bakery, Pastry, Café", "$20-25/hr", "Mornings 5am-1pm"),
         ("Catering Kings NYC", "catering@kings.com", "employer",
          "Full-service catering company. Event-driven staffing needs, great pay.",
-         "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&crop=face", 4.4, 150, "Chelsea, Manhattan", "Catering, Events, All Cuisines", "$200-400/event", "Event-based"),
+         "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop&crop=face", 4.4, 150, "Chelsea, Manhattan", "Catering, Events, All Cuisines", "$200-400/event", "Event-based"),
     ]
 
     for name, email, role, bio, avatar, rating, shifts, loc, cuisine, pay, hrs in employer_data:
