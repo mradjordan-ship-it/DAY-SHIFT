@@ -145,7 +145,10 @@ export default function App() {
     if (screenParam === "reset" && params.get("token")) {
       setScreen("reset");
       setParams({ token: params.get("token") });
-      // clear the URL so reloading doesn't get stuck
+      window.history.replaceState({}, document.title, "/");
+    } else if (screenParam === "verify-email" && params.get("token")) {
+      setScreen("verify-email");
+      setParams({ token: params.get("token") });
       window.history.replaceState({}, document.title, "/");
     } else if (screenParam === "about") {
       setScreen("about");
@@ -369,7 +372,7 @@ export default function App() {
           )}
 
           {/* Screen content */}
-          <main className={`flex-1 min-h-0 flex flex-col ${["login","register","forgot","reset","about","landing"].includes(screen) ? "overflow-y-auto" : "overflow-hidden"}`}>
+          <main className={`flex-1 min-h-0 flex flex-col ${["login","register","forgot","reset","verify-email","about","landing"].includes(screen) ? "overflow-y-auto" : "overflow-hidden"}`}>
             <Suspense fallback={<ScreenLoader />}>
             {/* Landing page for non-logged-in users */}
             {!user && screen === "feed" && <LandingScreen />}
@@ -383,6 +386,7 @@ export default function App() {
             {screen === "register" && <AuthScreen mode="register" />}
             {screen === "forgot" && <AuthScreen mode="forgot" />}
             {screen === "reset" && <AuthScreen mode="reset" tokenParam={params.token as string} />}
+            {screen === "verify-email" && <AuthScreen mode="verify-email" tokenParam={params.token as string} />}
             {screen === "user-profile" && <UserProfileScreen userId={params.userId as number} />}
             {screen === "review" && (
               <ReviewScreen
@@ -406,7 +410,7 @@ export default function App() {
           </main>
 
           {/* Bottom Nav — hidden on auth/about/landing screens and fullscreen */}
-          {!["login", "register", "forgot", "reset", "about", "boost", "analytics", "landing"].includes(screen) && user && !fullscreenActive && (
+          {!["login", "register", "forgot", "reset", "verify-email", "about", "boost", "analytics", "landing"].includes(screen) && user && !fullscreenActive && (
           <>
             {/* Floating Post peek — visible when nav is hidden (mobile only) */}
             {navHidden && (

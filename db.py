@@ -63,6 +63,8 @@ def init_db():
         ALTER TABLE users ADD COLUMN IF NOT EXISTS cuisine_type TEXT DEFAULT '';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_level TEXT DEFAULT '';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS hours TEXT DEFAULT '';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token TEXT;
 
         CREATE TABLE IF NOT EXISTS videos (
             id SERIAL PRIMARY KEY,

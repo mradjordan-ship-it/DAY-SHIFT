@@ -73,6 +73,34 @@ export default function PostScreen() {
     );
   }
 
+  if (!user.email_verified) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6 text-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center">
+          <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+        </div>
+        <h2 className="text-xl font-bold text-foreground">Verify Your Email</h2>
+        <p className="text-muted-foreground text-sm max-w-xs">You need to verify your email before you can post. Check your inbox or request a new link.</p>
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90 ember-glow"
+          onClick={async () => {
+            try {
+              const res = await fetch("/api/auth/resend-verification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: user.email }),
+              });
+              const data = await res.json();
+              alert(data.message || "Check your email");
+            } catch { alert("Failed to resend verification"); }
+          }}
+        >
+          Resend Verification Email
+        </Button>
+      </div>
+    );
+  }
+
   // Upload helper with progress tracking via XHR
   const uploadWithProgress = (
     file: File,

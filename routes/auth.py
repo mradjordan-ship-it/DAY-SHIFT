@@ -1,7 +1,7 @@
 """Auth routes for Day Shift Marketplace."""
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, Request
@@ -14,10 +14,24 @@ from .deps import (
     UPLOAD_DIR, MAX_IMAGE_BYTES,
 )
 from .models import RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody
+from .email_utils import send_verification_email, send_password_reset_email
 
 api = APIRouter()
 
 limiter = Limiter(key_func=get_remote_address)
+
+
+def _get_base_url_from_request(request: Request) -> str:
+    """Derive the public base URL from the request for email links."""
+    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN") if (os := __import__("os")) else None
+    if custom_domain:
+        return f"https://{custom_domain}"
+    origin = request.headers.get("origin") or request.headers.get("referer", "")
+    if origin:
+        from urllib.parse import urlparse
+        parsed = urlparse(origin)
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return "https://dayshift.app"
 
 
 def _validate_password(password: str) -> None:
@@ -72,9 +86,11 @@ async def register(
     conn = get_conn()
     cur = conn.cursor()
     try:
+        # Generate email verification token
+        verify_token = str(uuid.uuid4())
         cur.execute(
-            "INSERT INTO users (name, email, password_hash, role, avatar_url) VALUES (%s, %s, %s, %s, %s) RETURNING *",
-            (name, email, hash_password(password), role, avatar_url),
+            "INSERT INTO users (name, email, password_hash, role, avatar_url, email_verified, email_verify_token) VALUES (%s, %s, %s, %s, %s, FALSE, %s) RETURNING *",
+            (name, email, hash_password(password), role, avatar_url, verify_token),
         )
         user = dict(cur.fetchone())
         conn.commit()
@@ -88,8 +104,12 @@ async def register(
         cur.close()
         conn.close()
 
+    # Send verification email (non-blocking — don't fail registration if email fails)
+    base_url = _get_base_url_from_request(request)
+    send_verification_email(email, name, verify_token, base_url)
+
     token = create_token(user["id"])
-    for f in ("password_hash", "reset_token", "reset_token_expires"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token"):
         user.pop(f, None)
     return {"token": token, "user": user}
 
@@ -112,7 +132,7 @@ def login(request: Request, body: LoginBody):
 
     token = create_token(user["id"])
     user = dict(user)
-    for f in ("password_hash", "reset_token", "reset_token_expires"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token"):
         user.pop(f, None)
     return {"token": token, "user": user}
 
@@ -122,7 +142,7 @@ def login(request: Request, body: LoginBody):
 def forgot_password(body: ForgotPasswordBody, request: Request):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE email = %s", (body.email,))
+    cur.execute("SELECT id, name FROM users WHERE email = %s", (body.email,))
     user = cur.fetchone()
     
     if not user:
@@ -132,7 +152,6 @@ def forgot_password(body: ForgotPasswordBody, request: Request):
         return {"ok": True, "message": "If that email is registered, a reset link was created."}
 
     token = str(uuid.uuid4())
-    from datetime import timezone
     expires = datetime.now(timezone.utc) + timedelta(hours=1)
     
     cur.execute(
@@ -143,9 +162,10 @@ def forgot_password(body: ForgotPasswordBody, request: Request):
     cur.close()
     conn.close()
 
-    # In production, send the reset link via email.
-    # For now, we store the token and the user must use the reset form with the token
-    # from an actual email. We do NOT return the token in the API response.
+    # Send the reset link via email
+    base_url = _get_base_url_from_request(request)
+    send_password_reset_email(body.email, token, base_url)
+
     return {
         "ok": True,
         "message": "If that email is registered, a reset link has been sent.",
@@ -197,9 +217,8 @@ def reset_password(body: ResetPasswordBody, request: Request):
 @api.get("/auth/me")
 def me(current_user=Depends(get_current_user)):
     user = dict(current_user)
-    for f in ("password_hash", "reset_token", "reset_token_expires"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token"):
         user.pop(f, None)
-    # Keep email only for the user's own /auth/me (they need it for profile)
     return user
 
 
@@ -224,6 +243,84 @@ def onboard(body: dict, current_user=Depends(get_current_user)):
     finally:
         cur.close()
         conn.close()
-    for f in ("password_hash", "reset_token", "reset_token_expires"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token"):
         updated.pop(f, None)
     return updated
+
+
+# ── Email Verification ────────────────────────────────────────────────────────
+
+@api.post("/auth/verify-email")
+@limiter.limit("10/minute")
+def verify_email(body: dict, request: Request):
+    """Verify a user's email using the token from the verification link."""
+    token = body.get("token", "").strip()
+    if not token:
+        raise HTTPException(400, "Verification token is required")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, name, email, email_verify_token FROM users WHERE email_verify_token = %s",
+            (token,),
+        )
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(400, "Invalid or expired verification token")
+
+        # Mark as verified and clear the token
+        cur.execute(
+            "UPDATE users SET email_verified = TRUE, email_verify_token = NULL WHERE id = %s RETURNING *",
+            (user["id"],),
+        )
+        updated = dict(cur.fetchone())
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+    # Return a fresh token so the user is auto-logged in
+    jwt_token = create_token(updated["id"])
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token"):
+        updated.pop(f, None)
+    return {"ok": True, "token": jwt_token, "user": updated}
+
+
+@api.post("/auth/resend-verification")
+@limiter.limit("3/minute")
+def resend_verification(body: dict, request: Request):
+    """Resend a verification email to the given address."""
+    email = body.get("email", "").strip().lower()
+    if not email:
+        raise HTTPException(400, "Email is required")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id, name, email_verified FROM users WHERE email = %s",
+            (email,),
+        )
+        user = cur.fetchone()
+        if not user:
+            # Don't reveal whether email exists
+            return {"ok": True, "message": "If that email is registered and unverified, a new verification link has been sent."}
+        if user["email_verified"]:
+            return {"ok": True, "message": "Email is already verified. You can sign in."}
+
+        # Generate a new token (invalidates any previous one)
+        new_token = str(uuid.uuid4())
+        cur.execute(
+            "UPDATE users SET email_verify_token = %s WHERE id = %s",
+            (new_token, user["id"]),
+        )
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+    base_url = _get_base_url_from_request(request)
+    send_verification_email(email, user["name"], new_token, base_url)
+
+    return {"ok": True, "message": "If that email is registered and unverified, a new verification link has been sent."}

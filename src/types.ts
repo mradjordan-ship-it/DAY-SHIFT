@@ -19,6 +19,7 @@ export interface User {
   is_advertiser: boolean;
   advertiser_agreement_accepted: boolean;
   onboarded: boolean;
+  email_verified: boolean;
   bio: string;
   avatar_url: string;
   avg_rating: number;
@@ -109,6 +110,7 @@ export type Screen =
   | "register"
   | "forgot"
   | "reset"
+  | "verify-email"
   | "user-profile"
   | "review"
   | "admin"

@@ -66,7 +66,7 @@ def get_user(user_id: int):
         raise HTTPException(404, "User not found")
     user = dict(user)
     # Remove sensitive fields
-    for field in ("password_hash", "reset_token", "reset_token_expires", "email"):
+    for field in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token", "email"):
         user.pop(field, None)
     if user.get("created_at"):
         user["created_at"] = user["created_at"].isoformat()
@@ -117,7 +117,7 @@ def update_profile(body: ProfileUpdateBody, current_user=Depends(get_current_use
 
     cur.close()
     conn.close()
-    for f in ("password_hash", "reset_token", "reset_token_expires", "email"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token", "email"):
         user.pop(f, None)
     if user.get("created_at"):
         user["created_at"] = user["created_at"].isoformat()
@@ -170,6 +170,6 @@ async def update_avatar(file: UploadFile = File(...), current_user=Depends(get_c
     conn.commit()
     cur.close()
     conn.close()
-    for f in ("password_hash", "reset_token", "reset_token_expires", "email"):
+    for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token", "email"):
         user.pop(f, None)
     return user

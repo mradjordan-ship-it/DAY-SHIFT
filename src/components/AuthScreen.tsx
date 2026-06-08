@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useAuth, useNav } from "../App";
 import type { User } from "../types";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ export default function AuthScreen({
   mode,
   tokenParam,
 }: {
-  mode: "login" | "register" | "forgot" | "reset";
+  mode: "login" | "register" | "forgot" | "reset" | "verify-email";
   tokenParam?: string;
 }) {
   const { login } = useAuth();
@@ -44,6 +44,36 @@ export default function AuthScreen({
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [legalDialog, setLegalDialog] = useState<"terms" | "privacy" | null>(null);
+
+  // ── Email verification: auto-verify on mount ──
+  const [verifyState, setVerifyState] = useState<"verifying" | "success" | "error">("verifying");
+  const [resendEmail, setResendEmail] = useState("");
+
+  useEffect(() => {
+    if (mode !== "verify-email" || !tokenParam) return;
+    const doVerify = async () => {
+      try {
+        const res = await fetch("/api/auth/verify-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: tokenParam }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Verification failed");
+        // Auto-login on success
+        if (data.token && data.user) {
+          login(data.token, data.user as User);
+          trackEvent("email_verified", { role: data.user.role });
+        }
+        setVerifyState("success");
+        // Redirect to feed after a brief success message
+        setTimeout(() => navigate("feed"), 2000);
+      } catch {
+        setVerifyState("error");
+      }
+    };
+    doVerify();
+  }, [mode, tokenParam]);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -139,6 +169,11 @@ export default function AuthScreen({
       const u: User = data.user;
       login(data.token, u);
       trackEvent("user_registered", { role: u.role, method: "email" });
+      // If email verification is pending, show message instead of going to feed
+      if (!u.email_verified) {
+        setSuccessMsg("Account created! Check your email to verify your account before posting.");
+        return;
+      }
       navigate("feed");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -151,8 +186,86 @@ export default function AuthScreen({
     !!imageFile && termsAccepted && privacyAccepted;
 
   return (
-    <div className={mode === "login" ? "h-full flex flex-col bg-background overflow-y-auto [overflow-y:scroll] [-webkit-overflow-scrolling:touch]" : "h-full flex flex-col bg-background overflow-y-auto [overflow-y:scroll] [-webkit-overflow-scrolling:touch]"}>
-      {mode === "login" ? (
+    <div className="h-full flex flex-col bg-background overflow-y-auto [overflow-y:scroll] [-webkit-overflow-scrolling:touch]">
+      {/* ── Verify Email Screen ── */}
+      {mode === "verify-email" ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 max-w-sm mx-auto w-full">
+          <img
+            src="/dayshift-logo.png"
+            alt="Day Shift"
+            className="h-16 w-auto mb-6"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+          {verifyState === "verifying" && (
+            <>
+              <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+              <h2 className="text-xl font-bold text-foreground mb-2">Verifying your email…</h2>
+              <p className="text-muted-foreground text-sm text-center">Hang tight, we're confirming your account.</p>
+            </>
+          )}
+          {verifyState === "success" && (
+            <>
+              <div className="w-14 h-14 rounded-full bg-green-500/15 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Email Verified!</h2>
+              <p className="text-muted-foreground text-sm text-center">You're all set. Redirecting to your feed…</p>
+            </>
+          )}
+          {verifyState === "error" && (
+            <>
+              <div className="w-14 h-14 rounded-full bg-destructive/15 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Verification Failed</h2>
+              <p className="text-muted-foreground text-sm text-center mb-6">This link may have expired or already been used. Enter your email to get a new one.</p>
+              <div className="w-full space-y-3">
+                <Input
+                  type="email"
+                  placeholder="Your email address"
+                  value={resendEmail}
+                  onChange={(e) => setResendEmail(e.target.value)}
+                  className="bg-secondary border-border h-11"
+                />
+                <Button
+                  className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 ember-glow"
+                  disabled={!resendEmail || loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    setError("");
+                    setSuccessMsg("");
+                    try {
+                      const res = await fetch("/api/auth/resend-verification", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: resendEmail }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.detail || "Failed to resend");
+                      setSuccessMsg(data.message);
+                    } catch (err: unknown) {
+                      setError(err instanceof Error ? err.message : "Something went wrong");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  {loading ? <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> : "Resend Verification"}
+                </Button>
+                {successMsg && <p className="text-green-500 text-sm text-center bg-green-500/10 rounded-lg py-2 px-3">{successMsg}</p>}
+                {error && <p className="text-destructive text-sm text-center bg-destructive/10 rounded-lg py-2 px-3">{error}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("login")}
+                className="text-primary font-medium hover:underline text-sm mt-4"
+              >
+                Back to Sign In
+              </button>
+            </>
+          )}
+        </div>
+      ) : mode === "login" ? (
         <form onSubmit={handleSubmit} className="flex flex-col h-full w-full max-w-sm mx-auto">
           {/* Top: Logo + Slogan — front and center */}
           <div className="flex-1 flex flex-col items-center justify-center px-4 min-h-[200px] pb-4">
@@ -223,7 +336,18 @@ export default function AuthScreen({
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResendEmail(form.email);
+                    setVerifyState("error"); // reuse the resend UI from verify-email screen
+                    navigate("verify-email");
+                  }}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Resend verification
+                </button>
                 <button
                   type="button"
                   onClick={() => navigate("forgot")}
@@ -455,6 +579,15 @@ export default function AuthScreen({
         {successMsg && (
           <div className="text-green-500 text-sm text-center bg-green-500/10 rounded-lg py-3 px-3">
             {successMsg}
+            {successMsg.includes("verify") && (
+              <button
+                type="button"
+                onClick={() => navigate("feed")}
+                className="block mx-auto mt-2 text-primary font-semibold hover:underline text-sm"
+              >
+                Continue to Feed →
+              </button>
+            )}
           </div>
         )}
 

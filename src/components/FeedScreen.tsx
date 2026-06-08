@@ -307,6 +307,28 @@ export default function FeedScreen() {
 
   return (
     <div className="flex flex-col h-full bg-black">
+      {/* Unverified email banner */}
+      {user && !user.email_verified && (
+        <div className="flex-shrink-0 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between gap-2">
+          <p className="text-amber-500 text-xs font-medium">Verify your email to post and match</p>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/auth/resend-verification", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: user.email }),
+                });
+                const data = await res.json();
+                alert(data.message || "Check your email");
+              } catch { alert("Failed to resend verification"); }
+            }}
+            className="text-amber-500 text-xs font-bold hover:underline whitespace-nowrap"
+          >
+            Resend
+          </button>
+        </div>
+      )}
       {/* Tabs — fixed above scroll */}
       <div className="flex-shrink-0 flex gap-0.5 px-3 py-2 bg-background border-b border-border z-20 shadow-sm relative">
         {(["all", "workers", "employers"] as FeedTab[]).map((t) => (
