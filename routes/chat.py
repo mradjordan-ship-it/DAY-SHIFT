@@ -64,6 +64,18 @@ def send_message(match_id: int, body: MessageBody, current_user=Depends(get_curr
         msg["created_at"] = msg["created_at"].isoformat()
     msg["sender_name"] = current_user["name"]
     msg["sender_avatar"] = current_user["avatar_url"]
+
+    # Send push notification to the other party
+    try:
+        from .push import send_push_to_user
+        match_dict = dict(match)
+        other_id = match_dict["employer_id"] if current_user["id"] == match_dict["worker_id"] else match_dict["worker_id"]
+        # Truncate long messages for the notification
+        preview = body.content[:80] + ("…" if len(body.content) > 80 else "")
+        send_push_to_user(other_id, f"{current_user['name']}", preview, f"/chat?matchId={match_id}")
+    except Exception:
+        pass  # Don't fail the message if push fails
+
     return msg
 
 

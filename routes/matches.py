@@ -124,6 +124,14 @@ def create_match(body: MatchBody, current_user=Depends(get_current_user)):
         cur.close()
         conn.close()
 
+    # Send push notification to the other party
+    try:
+        from .push import send_push_to_user
+        other_id = employer_id if current_user["id"] == worker_id else worker_id
+        send_push_to_user(other_id, "New Match Request 🧡", f"{current_user['name']} wants to connect!", "/matches")
+    except Exception:
+        pass  # Don't fail the match if push fails
+
     if match.get("created_at"):
         match["created_at"] = match["created_at"].isoformat()
     return match

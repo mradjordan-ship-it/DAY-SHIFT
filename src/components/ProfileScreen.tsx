@@ -20,10 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2
+  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff
 } from "lucide-react";
 import { RoleIcon, CategoryIcon, SaleIcon, EventIcon } from "./Icons";
 import { cn } from "@/lib/utils";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 export default function ProfileScreen() {
   const { user, token, logout, refreshUser } = useAuth();
@@ -47,6 +48,9 @@ export default function ProfileScreen() {
   const [editingPost, setEditingPost] = useState<Video | null>(null);
   const [postForm, setPostForm] = useState<{ title: string; description: string; repost: boolean; category: string; price: string; event_date: string; event_time: string; aspect_ratio: string; file?: File }>({ title: "", description: "", repost: false, category: "general", price: "", event_date: "", event_time: "", aspect_ratio: "9:16" });
   const [postSaving, setPostSaving] = useState(false);
+
+  // Push notifications
+  const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
 
   useEffect(() => {
     if (!user || !token) return;
@@ -306,6 +310,29 @@ export default function ProfileScreen() {
           <div className="flex-1 min-w-0">
             <p className="text-foreground font-semibold text-sm">Contact Day Shift</p>
             <p className="text-muted-foreground text-xs">Get help, report an issue, or ask a question</p>
+          </div>
+        </button>
+
+        {/* Push Notifications Toggle */}
+        <button
+          onClick={subscribed ? unsubscribe : subscribe}
+          disabled={pushLoading || permission === "denied"}
+          className="w-full mt-2 p-3 bg-card border border-border rounded-xl flex items-center gap-3 hover:bg-muted/50 transition-colors text-left disabled:opacity-50"
+        >
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${subscribed ? "bg-green-500/20" : "bg-secondary"}`}>
+            {subscribed ? <Bell size={16} className="text-green-400" /> : <BellOff size={16} className="text-muted-foreground" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-foreground font-semibold text-sm">
+              {pushLoading ? "Setting up…" : subscribed ? "Notifications On" : "Enable Notifications"}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {permission === "denied"
+                ? "Blocked by browser — enable in Settings"
+                : subscribed
+                ? "You'll get notified for matches & messages"
+                : "Get alerts for new matches and messages"}
+            </p>
           </div>
         </button>
 

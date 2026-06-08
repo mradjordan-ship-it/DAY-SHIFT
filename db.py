@@ -267,7 +267,18 @@ def init_db():
         ALTER TABLE post_boosts ADD COLUMN IF NOT EXISTS stripe_session_id TEXT;
         ALTER TABLE post_boosts ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
         ALTER TABLE post_boosts ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid';
-        
+
+        -- Push notification subscriptions
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            endpoint TEXT NOT NULL,
+            p256dh TEXT NOT NULL DEFAULT '',
+            auth_key TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, endpoint)
+        );
+
         -- PERFORMANCE INDEXES
         CREATE INDEX IF NOT EXISTS idx_videos_type_cat_created ON videos(type, category, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_videos_user_created ON videos(user_id, created_at DESC);

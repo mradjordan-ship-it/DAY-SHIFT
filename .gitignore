@@ -10,3 +10,5 @@ __pycache__/
 *.zip
 # Plans (local only)
 plans/
+# VAPID keys (secrets)
+vapid_keys/

@@ -1,22 +1,22 @@
 [
   {
-    "id": "1-email-verify",
     "content": "[P1] Email verification on signup — token generation, verify endpoint, email sending, frontend flow",
+    "id": "1-email-verify",
+    "status": "completed"
+  },
+  {
+    "content": "[P1] Push notifications — service worker, web push, subscription storage, notification triggers",
+    "id": "2-push-notifications",
     "status": "in_progress"
   },
   {
-    "id": "2-push-notifications",
-    "content": "[P1] Push notifications — service worker, web push, subscription storage, notification triggers",
-    "status": "pending"
-  },
-  {
-    "id": "3-stripe-payments",
     "content": "[P1] Wire Stripe payments — boost checkout, tip flow, webhook handling",
+    "id": "3-stripe-payments",
     "status": "pending"
   },
   {
-    "id": "4-content-moderation",
     "content": "[P2] Content moderation — auto-flagging, report queue, admin review UI",
+    "id": "4-content-moderation",
     "status": "pending"
   }
 ]
