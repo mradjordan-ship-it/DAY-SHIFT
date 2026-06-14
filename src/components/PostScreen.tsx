@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth, useNav } from "../App";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,7 @@ type Step = "create" | "record" | "done";
 
 export default function PostScreen() {
   const { user, token } = useAuth();
-  const { navigate } = useNav();
+  const { navigate, params: navParams } = useNav();
   const isAdmin = user?.is_admin ?? false;
   const [step, setStep] = useState<Step>("create");
   const [postType] = useState<"worker" | "employer">(
@@ -188,20 +188,17 @@ export default function PostScreen() {
     }
   };
 
-  // Handle Web Share Target incoming data on mount
-  useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sharedUrl = params.get("shared_url") || params.get("url") || params.get("text");
-    const sharedTitle = params.get("title");
-    const sharedDesc = params.get("description") || params.get("text");
+  // Handle Web Share Target incoming data — read from nav params (set by App.tsx)
+  useEffect(() => {
+    const sharedUrl = (navParams.shared_url as string) || "";
+    const sharedTitle = (navParams.title as string) || "";
+    const sharedDesc = (navParams.description as string) || "";
     if (sharedUrl) {
       setImportUrl(sharedUrl);
-      if (sharedTitle) setForm((f) => ({ ...f, title: sharedTitle }));
-      if (sharedDesc && sharedDesc !== sharedUrl) setForm((f) => ({ ...f, description: sharedDesc }));
-      // Clean URL
-      window.history.replaceState({}, document.title, "/");
     }
-  });
+    if (sharedTitle) setForm((f) => ({ ...f, title: sharedTitle }));
+    if (sharedDesc && sharedDesc !== sharedUrl) setForm((f) => ({ ...f, description: sharedDesc }));
+  }, [navParams.shared_url, navParams.title, navParams.description]);
 
   // Admin upload handlers
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
