@@ -362,7 +362,7 @@ export default function PostScreen() {
   // Requires: Description AND at least one of (Image OR Video)
   const canPost = Boolean(
     form.description.trim() && 
-    (uploadedImageUrl || uploadedVideoUrlAdmin) && 
+    (uploadedImageUrl || uploadedVideoUrlAdmin || form.title.trim()) && 
     !submitting
   );
 
