@@ -40,6 +40,7 @@ class ImportURLResponse(BaseModel):
     experience_level: str = ""
     cuisine_type: str = ""
     image_url: str = ""
+    video_url: str = ""
     source_domain: str = ""
     category: str = "general"
 
@@ -59,6 +60,16 @@ def _extract_from_og(soup: BeautifulSoup) -> dict:
     og_image = soup.find("meta", property="og:image")
     if og_image and og_image.get("content"):
         data["image_url"] = og_image["content"].strip()
+
+    # Extract video URL from OG video tags
+    for prop in ("og:video", "og:video:url", "og:video:secure_url"):
+        og_video = soup.find("meta", property=prop)
+        if og_video and og_video.get("content"):
+            video_url = og_video["content"].strip()
+            # Only accept direct video URLs (mp4, webm, etc.) — skip SWF/players
+            if any(video_url.lower().endswith(ext) for ext in (".mp4", ".webm", ".mov", ".m3u8")) or "video" in (og_video.get("type") or "").lower():
+                data["video_url"] = video_url
+                break
 
     return data
 
@@ -214,13 +225,24 @@ async def import_url(body: ImportURLRequest):
     if source_domain in ("localhost", "127.0.0.1", "0.0.0.0"):
         raise HTTPException(400, "Cannot import from local addresses")
 
+    # Check if the URL itself is a direct video file
+    video_exts = (".mp4", ".webm", ".mov", ".m4v", ".3gp")
+    if any(parsed.path.lower().endswith(ext) for ext in video_exts):
+        return ImportURLResponse(
+            title=parsed.path.split("/")[-1] or "Imported Video",
+            description=f"Imported from {source_domain}",
+            video_url=body.url,
+            source_domain=source_domain,
+            category="kitchen" if any(kw in source_domain for kw in ("indeed", "ziprecruiter", "linkedin")) else "general",
+        )
+
     try:
         async with httpx.AsyncClient(
             timeout=15.0,
             follow_redirects=True,
             headers={
                 "User-Agent": "DayShift/1.0 (job import bot; +https://day-shift.workshop.build)",
-                "Accept": "text/html,application/xhtml+xml",
+                "Accept": "text/html,application/xhtml+xml,application/json,*/*",
             },
         ) as client:
             resp = await client.get(body.url)
@@ -233,8 +255,18 @@ async def import_url(body: ImportURLRequest):
         raise HTTPException(422, "Could not fetch that URL")
 
     content_type = resp.headers.get("content-type", "")
+    # Check if response is a direct video (some URLs redirect to video files)
+    if any(t in content_type for t in ("video/", "application/x-mpegURL", "application/vnd.apple.mpegurl")):
+        return ImportURLResponse(
+            title=body.url.split("/")[-1] or "Imported Video",
+            description=f"Imported from {source_domain}",
+            video_url=str(resp.url),
+            source_domain=source_domain,
+            category="general",
+        )
+
     if "text/html" not in content_type and "application/xhtml" not in content_type:
-        raise HTTPException(422, "URL does not point to a web page")
+        raise HTTPException(422, "URL does not point to a web page or video")
 
     # Parse HTML
     try:
