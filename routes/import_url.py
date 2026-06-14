@@ -41,6 +41,7 @@ class ImportURLResponse(BaseModel):
     cuisine_type: str = ""
     image_url: str = ""
     source_domain: str = ""
+    category: str = "general"
 
 
 def _extract_from_og(soup: BeautifulSoup) -> dict:
@@ -143,6 +144,62 @@ def _extract_job_fields(text: str) -> dict:
     return data
 
 
+def _detect_category(text: str, url: str) -> str:
+    """Auto-detect post category from page content and URL."""
+    text_lower = text.lower()
+    url_lower = url.lower()
+
+    # For-sale indicators
+    sale_keywords = [
+        "for sale", "selling", "used", "equipment", "fryer", "oven",
+        "mixer", "freezer", "kitchen equipment", "negotiable", "obo",
+        "buy", "price:", "condition:", "barely used", "like new",
+    ]
+    if any(kw in text_lower for kw in sale_keywords):
+        return "sale"
+
+    # Kitchen/employer indicators — looking to hire
+    kitchen_keywords = [
+        "hiring", "looking for", "seeking", "position", "job opening",
+        "open position", "we need", "join our team", "now hiring",
+        "help wanted", "full-time", "part-time", "shift available",
+        "line cook", "sous chef", "prep cook", "dishwasher",
+        "server", "bartender", "host", "pastry chef", "sous",
+        "kitchen manager", "executive chef", "chef de cuisine",
+    ]
+    # Crew/worker indicators — looking for work
+    crew_keywords = [
+        "available for", "looking for work", "seeking employment",
+        "i have experience", "years of experience", "my specialty",
+        "i specialize", "work history", "certified", "i am", "i'm",
+        "my experience", "i cook", "i can", "resume",
+    ]
+    has_kitchen = any(kw in text_lower for kw in kitchen_keywords)
+    has_crew = any(kw in text_lower for kw in crew_keywords)
+
+    if has_kitchen and not has_crew:
+        return "kitchen"
+    if has_crew and not has_kitchen:
+        return "crew"
+
+    # Job board URLs → likely kitchen/employer posting
+    job_board_domains = ["indeed.com", "ziprecruiter.com", "glassdoor.com", "linkedin.com/jobs"]
+    if any(domain in url_lower for domain in job_board_domains):
+        return "kitchen"
+
+    # Event indicators (checked after job keywords to avoid false positives)
+    event_keywords = [
+        "food festival", "pop-up dinner", "tasting event", "gala",
+        "charity dinner", "cook-off", "culinary competition",
+        "ticket required", "admission fee",
+    ]
+    if any(kw in text_lower for kw in event_keywords) or "/event" in url_lower:
+        return "event"
+
+    # Default
+    return "general"
+
+
 @api.post("/import-url", response_model=ImportURLResponse)
 async def import_url(body: ImportURLRequest):
     """Fetch a URL and extract job-relevant data from its content."""
@@ -201,5 +258,9 @@ async def import_url(body: ImportURLRequest):
         result.update(_extract_job_fields(desc_text))
 
     result["source_domain"] = source_domain
+
+    # Auto-detect category
+    all_text = f"{result.get('title', '')} {result.get('description', '')} {visible_text}"
+    result["category"] = _detect_category(all_text, body.url)
 
     return ImportURLResponse(**result)

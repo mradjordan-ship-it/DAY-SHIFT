@@ -172,6 +172,7 @@ export default function PostScreen() {
       if (data.hours) set("hours", data.hours);
       if (data.experience_level) set("experience_level", data.experience_level);
       if (data.cuisine_type) set("cuisine_type", data.cuisine_type);
+      if (data.category && data.category !== "general") set("category", data.category);
       // If we got an image, use it
       if (data.image_url && !uploadedImageUrl) {
         setUploadedImageUrl(data.image_url);
