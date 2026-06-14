@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle, Upload, X, Image as ImageIcon, VideoIcon, Tag, Calendar, Sparkles, Lightbulb, Clock, Star, HardHat, Building2 } from "lucide-react";
+import { CheckCircle, Upload, X, Image as ImageIcon, VideoIcon, Tag, Calendar, Sparkles, Lightbulb, Clock, Star, HardHat, Building2, Link, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LiveRecorder from "./LiveRecorder";
 
@@ -64,6 +64,12 @@ export default function PostScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [showAgreement, setShowAgreement] = useState(false);
   const [agreementAccepted, setAgreementAccepted] = useState(user?.advertiser_agreement_accepted ?? false);
+
+  // URL import state
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [importSuccess, setImportSuccess] = useState(false);
 
   if (!user) {
     return (
@@ -140,6 +146,61 @@ export default function PostScreen() {
   };
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Import job data from URL
+  const handleImportUrl = async () => {
+    if (!importUrl.trim()) return;
+    setImporting(true);
+    setImportError("");
+    setImportSuccess(false);
+    try {
+      const res = await fetch("/api/import-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setImportError(data.detail || "Could not import from that URL");
+        return;
+      }
+      // Pre-fill form fields from imported data
+      if (data.title) set("title", data.title);
+      if (data.description) set("description", data.description);
+      if (data.location) set("location", data.location);
+      if (data.pay_rate) set("pay_rate", data.pay_rate);
+      if (data.hours) set("hours", data.hours);
+      if (data.experience_level) set("experience_level", data.experience_level);
+      if (data.cuisine_type) set("cuisine_type", data.cuisine_type);
+      // If we got an image, use it
+      if (data.image_url && !uploadedImageUrl) {
+        setUploadedImageUrl(data.image_url);
+        setImagePreview(data.image_url);
+      }
+      setImportSuccess(true);
+      setImportUrl("");
+      setTimeout(() => setImportSuccess(false), 3000);
+    } catch {
+      setImportError("Network error — please try again");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Handle Web Share Target incoming data on mount
+  useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedUrl = params.get("shared_url") || params.get("url") || params.get("text");
+    const sharedTitle = params.get("title");
+    const sharedDesc = params.get("description") || params.get("text");
+    if (sharedUrl) {
+      setImportUrl(sharedUrl);
+      if (sharedTitle) setForm((f) => ({ ...f, title: sharedTitle }));
+      if (sharedDesc && sharedDesc !== sharedUrl) setForm((f) => ({ ...f, description: sharedDesc }));
+      // Clean URL
+      window.history.replaceState({}, document.title, "/");
+    }
+  });
 
   // Admin upload handlers
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -363,6 +424,34 @@ export default function PostScreen() {
                   <span className="text-amber-500 font-semibold"><Lightbulb size={11} className="inline mr-0.5" />Video posts get 3x more matches!</span>
                 </p>
               </div>
+            </div>
+
+            {/* Import from URL */}
+            <div className="space-y-1.5 rounded-xl border border-border bg-secondary/30 p-3">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <Link size={10} /> Import from URL
+                <span className="font-normal normal-case text-muted-foreground/60">— paste a job link from Facebook, LinkedIn, Indeed, etc.</span>
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={importUrl}
+                  onChange={(e) => { setImportUrl(e.target.value); setImportError(""); setImportSuccess(false); }}
+                  placeholder="https://facebook.com/groups/jobs/post/..."
+                  className="bg-secondary border-border h-8 text-sm flex-1"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleImportUrl(); }}
+                />
+                <Button
+                  type="button"
+                  onClick={handleImportUrl}
+                  disabled={importing || !importUrl.trim()}
+                  size="sm"
+                  className={cn("h-8 px-3 text-xs", importSuccess ? "bg-green-600 text-white" : "bg-primary text-primary-foreground")}
+                >
+                  {importing ? <Loader2 size={14} className="animate-spin" /> : importSuccess ? "✓ Done" : "Import"}
+                </Button>
+              </div>
+              {importError && <p className="text-[11px] text-destructive">{importError}</p>}
+              {importSuccess && <p className="text-[11px] text-green-500">Fields pre-filled — review and add media before posting</p>}
             </div>
 
             {/* Media Uploads + Layout */}

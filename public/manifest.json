@@ -24,5 +24,15 @@
   ],
   "categories": ["social", "lifestyle"],
   "screenshots": [],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "share_target": {
+    "action": "/?screen=post",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "description",
+      "url": "shared_url"
+    }
+  }
 }

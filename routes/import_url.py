@@ -1,0 +1,205 @@
+"""Import job data from an external URL via Open Graph meta tags and page scraping."""
+from __future__ import annotations
+
+import os
+import re
+from urllib.parse import urlparse
+
+import httpx
+from bs4 import BeautifulSoup
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+api = APIRouter()
+
+# Keywords that suggest a field mapping
+_PAY_KEYWORDS = re.compile(
+    r"\$(\d[\d,.]*)\s*(?:/|per\s*)?(?:hr|hour|hrly|hourly)?", re.I
+)
+_LOCATION_KEYWORDS = re.compile(
+    r"\b(?:location|city|area|address|where)\b", re.I
+)
+_HOURS_KEYWORDS = re.compile(
+    r"\b(\d[\d.]*)\s*(?:hrs?|hours?|shift\s*hours?)\b", re.I
+)
+_EXP_KEYWORDS = re.compile(
+    r"\b(?:entry.level|junior|mid.level|senior|lead|executive|experienced)\b", re.I
+)
+
+
+class ImportURLRequest(BaseModel):
+    url: str
+
+
+class ImportURLResponse(BaseModel):
+    title: str = ""
+    description: str = ""
+    location: str = ""
+    pay_rate: str = ""
+    hours: str = ""
+    experience_level: str = ""
+    cuisine_type: str = ""
+    image_url: str = ""
+    source_domain: str = ""
+
+
+def _extract_from_og(soup: BeautifulSoup) -> dict:
+    """Pull data from Open Graph meta tags."""
+    data: dict = {}
+
+    og_title = soup.find("meta", property="og:title")
+    if og_title and og_title.get("content"):
+        data["title"] = og_title["content"].strip()
+
+    og_desc = soup.find("meta", property="og:description")
+    if og_desc and og_desc.get("content"):
+        data["description"] = og_desc["content"].strip()
+
+    og_image = soup.find("meta", property="og:image")
+    if og_image and og_image.get("content"):
+        data["image_url"] = og_image["content"].strip()
+
+    return data
+
+
+def _extract_from_twitter(soup: BeautifulSoup) -> dict:
+    """Pull data from Twitter Card meta tags as fallback."""
+    data: dict = {}
+
+    tw_title = soup.find("meta", attrs={"name": "twitter:title"})
+    if tw_title and tw_title.get("content"):
+        data.setdefault("title", tw_title["content"].strip())
+
+    tw_desc = soup.find("meta", attrs={"name": "twitter:description"})
+    if tw_desc and tw_desc.get("content"):
+        data.setdefault("description", tw_desc["content"].strip())
+
+    tw_image = soup.find("meta", attrs={"name": "twitter:image"})
+    if tw_image and tw_image.get("content"):
+        data.setdefault("image_url", tw_image["content"].strip())
+
+    return data
+
+
+def _extract_from_html(soup: BeautifulSoup) -> dict:
+    """Fallback: pull from <title>, meta description, and visible text."""
+    data: dict = {}
+
+    if not data.get("title"):
+        title_tag = soup.find("title")
+        if title_tag and title_tag.string:
+            # Clean up common suffixes like " | LinkedIn", " - Facebook"
+            cleaned = re.sub(
+                r"\s*[|\-–—]\s*(LinkedIn|Facebook|Indeed|Glassdoor|ZipRecruiter|Instagram|X|Twitter).*$",
+                "",
+                title_tag.string.strip(),
+                flags=re.I,
+            )
+            data["title"] = cleaned
+
+    if not data.get("description"):
+        meta_desc = soup.find("meta", attrs={"name": "description"})
+        if meta_desc and meta_desc.get("content"):
+            data["description"] = meta_desc["content"].strip()
+
+    return data
+
+
+def _extract_job_fields(text: str) -> dict:
+    """Parse pay rate, hours, experience level, location from visible text."""
+    data: dict = {}
+
+    # Pay rate
+    pay_match = _PAY_KEYWORDS.search(text)
+    if pay_match:
+        data["pay_rate"] = pay_match.group(0).strip()
+
+    # Hours
+    hours_match = _HOURS_KEYWORDS.search(text)
+    if hours_match:
+        data["hours"] = hours_match.group(0).strip()
+
+    # Experience level
+    exp_match = _EXP_KEYWORDS.search(text)
+    if exp_match:
+        data["experience_level"] = exp_match.group(0).strip().title()
+
+    # Location — look for common patterns like "Location: Columbus, OH"
+    loc_match = re.search(
+        r"(?:location|city|area|address)\s*[:\-–]\s*(.+?)(?:\n|<br|$)", text, re.I
+    )
+    if loc_match:
+        data["location"] = loc_match.group(1).strip()[:100]
+
+    # Cuisine type — look for common food industry keywords
+    cuisine_match = re.search(
+        r"(?:cuisine|cuisine type|food type|restaurant type)\s*[:\-–]\s*(.+?)(?:\n|<br|$)",
+        text,
+        re.I,
+    )
+    if cuisine_match:
+        data["cuisine_type"] = cuisine_match.group(1).strip()[:100]
+
+    return data
+
+
+@api.post("/import-url", response_model=ImportURLResponse)
+async def import_url(body: ImportURLRequest):
+    """Fetch a URL and extract job-relevant data from its content."""
+    # Validate URL
+    parsed = urlparse(body.url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(400, "URL must start with http:// or https://")
+
+    source_domain = parsed.hostname or ""
+
+    # Block private/internal IPs to prevent SSRF
+    if source_domain in ("localhost", "127.0.0.1", "0.0.0.0"):
+        raise HTTPException(400, "Cannot import from local addresses")
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=True,
+            headers={
+                "User-Agent": "DayShift/1.0 (job import bot; +https://day-shift.workshop.build)",
+                "Accept": "text/html,application/xhtml+xml",
+            },
+        ) as client:
+            resp = await client.get(body.url)
+            resp.raise_for_status()
+    except httpx.TimeoutException:
+        raise HTTPException(408, "Timed out fetching that URL")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(422, f"Could not fetch URL (HTTP {e.response.status_code})")
+    except Exception:
+        raise HTTPException(422, "Could not fetch that URL")
+
+    content_type = resp.headers.get("content-type", "")
+    if "text/html" not in content_type and "application/xhtml" not in content_type:
+        raise HTTPException(422, "URL does not point to a web page")
+
+    # Parse HTML
+    try:
+        soup = BeautifulSoup(resp.text, "lxml")
+    except Exception:
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Extract in priority order: OG → Twitter → plain HTML
+    result: dict = {}
+    result.update(_extract_from_og(soup))
+    result.update(_extract_from_twitter(soup))
+    result.update(_extract_from_html(soup))
+
+    # Extract job-specific fields from visible text
+    visible_text = soup.get_text(separator=" ", strip=True)
+    result.update(_extract_job_fields(visible_text))
+
+    # Also try extracting from the description itself if location/pay not found
+    desc_text = result.get("description", "")
+    if desc_text and (not result.get("pay_rate") or not result.get("location")):
+        result.update(_extract_job_fields(desc_text))
+
+    result["source_domain"] = source_domain
+
+    return ImportURLResponse(**result)

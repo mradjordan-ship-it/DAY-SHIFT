@@ -31,6 +31,7 @@ from .advertiser import api as advertiser_router
 from .admin import api as admin_router
 from .webhooks import api as webhooks_router
 from .push import api as push_router
+from .import_url import api as import_url_router
 
 
 def create_app(static_dir: str = "./dist") -> FastAPI:
@@ -142,6 +143,7 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
     app.include_router(admin_router, prefix="/api")
     app.include_router(webhooks_router, prefix="/api")
     app.include_router(push_router, prefix="/api")
+    app.include_router(import_url_router, prefix="/api")
 
     if os.path.isdir(static_dir):
         assets_dir = os.path.join(static_dir, "assets")

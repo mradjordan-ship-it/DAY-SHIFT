@@ -170,6 +170,15 @@ export default function App() {
     } else if (screenParam === "about") {
       setScreen("about");
       window.history.replaceState({}, document.title, "/");
+    } else if (screenParam === "post") {
+      // Web Share Target: pass shared params to PostScreen
+      setScreen("post");
+      setParams({
+        shared_url: params.get("shared_url") || params.get("url") || "",
+        title: params.get("title") || "",
+        description: params.get("description") || params.get("text") || "",
+      });
+      window.history.replaceState({}, document.title, "/");
     } else if (screenParam) {
       setScreen(screenParam as Screen);
       window.history.replaceState({}, document.title, "/");
