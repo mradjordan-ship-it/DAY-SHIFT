@@ -816,6 +816,18 @@ function VideoCard({
       ) : video.video_url ? (
         /* Video only */
         <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} />
+      ) : video.embed_url ? (
+        /* Embedded video (YouTube, Vimeo, TikTok, Facebook) */
+        <div className="absolute inset-0 w-full h-full">
+          <iframe
+            src={video.embed_url}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title={video.title || "Embedded video"}
+            loading="lazy"
+          />
+        </div>
       ) : video.description ? (
         /* Text only — no media */
         <div
@@ -1314,6 +1326,14 @@ function VideoCard({
                   if (fsPlaying) { vid.pause(); setFsPlaying(false); }
                   else { vid.play().catch(() => {}); setFsPlaying(true); }
                 }}
+              />
+            ) : video.embed_url ? (
+              <iframe
+                src={video.embed_url}
+                className="w-full max-w-2xl aspect-video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={video.title || "Embedded video"}
               />
             ) : video.image_url ? (
               <img src={video.image_url} alt={video.title || ""} className="max-w-full max-h-full object-contain" />

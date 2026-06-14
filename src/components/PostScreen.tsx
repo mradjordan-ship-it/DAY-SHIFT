@@ -71,6 +71,14 @@ export default function PostScreen() {
   const [importError, setImportError] = useState("");
   const [importSuccess, setImportSuccess] = useState(false);
 
+  // Embed video state
+  const [embedUrl, setEmbedUrl] = useState("");
+  const [embedInput, setEmbedInput] = useState("");
+  const [embedPreview, setEmbedPreview] = useState<string | null>(null);
+  const [embedChecking, setEmbedChecking] = useState(false);
+  const [embedError, setEmbedError] = useState("");
+  const [embedPlatform, setEmbedPlatform] = useState("");
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center h-64 p-6 text-center">
@@ -178,6 +186,12 @@ export default function PostScreen() {
         setUploadedVideoUrlAdmin(data.video_url);
         setVideoPreviewAdmin(data.video_url);
       }
+      // If we got an embed URL (YouTube, Vimeo, etc.), set it
+      if (data.embed_url) {
+        setEmbedUrl(data.embed_url);
+        setEmbedPreview(data.embed_url);
+        setEmbedPlatform(data.platform || "");
+      }
       // If we got an image, use it
       if (data.image_url && !uploadedImageUrl) {
         setUploadedImageUrl(data.image_url);
@@ -191,6 +205,47 @@ export default function PostScreen() {
     } finally {
       setImporting(false);
     }
+  };
+
+  // Check embed URL — convert a pasted video link to embed
+  const checkEmbedUrl = async (url: string) => {
+    if (!url.trim()) {
+      setEmbedPreview(null);
+      setEmbedPlatform("");
+      setEmbedError("");
+      return;
+    }
+    setEmbedChecking(true);
+    setEmbedError("");
+    try {
+      const res = await fetch("/api/embed-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      if (data.supported && data.embed_url) {
+        setEmbedUrl(data.embed_url);
+        setEmbedPreview(data.embed_url);
+        setEmbedPlatform(data.platform || "");
+      } else {
+        setEmbedPreview(null);
+        setEmbedPlatform("");
+        setEmbedError(data.platform ? `${data.platform} links aren't supported for embeds` : "Not a recognized video platform");
+      }
+    } catch {
+      setEmbedError("Could not verify that link");
+    } finally {
+      setEmbedChecking(false);
+    }
+  };
+
+  const resetEmbed = () => {
+    setEmbedUrl("");
+    setEmbedInput("");
+    setEmbedPreview(null);
+    setEmbedPlatform("");
+    setEmbedError("");
   };
 
   // Handle Web Share Target incoming data — read from nav params (set by App.tsx)
@@ -263,6 +318,7 @@ export default function PostScreen() {
     setUploadedVideoUrl("");
     resetImage();
     resetVideo();
+    resetEmbed();
     setAspectRatio("9:16");
     setForm({ title: "", description: "", cuisine_type: "", pay_rate: "", hours: "", experience_level: "", location: "", category: "general", price: "", event_date: "", event_time: "", scheduled_at: "" });
   };
@@ -311,9 +367,9 @@ export default function PostScreen() {
       const fd = new FormData();
 
       if (isAdmin) {
-        // Admin post: unified — can have text + image + video
+        // Admin post: unified — can have text + image + video + embed
         fd.append("type", postType);
-        fd.append("post_type", uploadedVideoUrlAdmin ? "video" : uploadedImageUrl ? "image" : "text");
+        fd.append("post_type", uploadedVideoUrlAdmin ? "video" : uploadedImageUrl ? "image" : embedUrl ? "video" : "text");
         fd.append("category", form.category);
         fd.append("price", form.price);
         fd.append("event_date", form.event_date);
@@ -324,10 +380,11 @@ export default function PostScreen() {
         fd.append("description", form.description);
         fd.append("video_url", uploadedVideoUrlAdmin || "");
         fd.append("image_url", uploadedImageUrl || "");
+        fd.append("embed_url", embedUrl || "");
       } else {
         // Regular user: can have text + image + video
         fd.append("type", postType);
-        fd.append("post_type", uploadedVideoUrlAdmin ? "video" : uploadedImageUrl ? "image" : "text");
+        fd.append("post_type", uploadedVideoUrlAdmin ? "video" : uploadedImageUrl ? "image" : embedUrl ? "video" : "text");
         fd.append("category", form.category);
         fd.append("price", form.price);
         fd.append("event_date", form.event_date);
@@ -338,6 +395,7 @@ export default function PostScreen() {
         fd.append("description", form.description);
         fd.append("video_url", uploadedVideoUrlAdmin || "");
         fd.append("image_url", uploadedImageUrl || "");
+        fd.append("embed_url", embedUrl || "");
         
         // Extra metadata fields for regular users
         fd.append("cuisine_type", form.cuisine_type);
@@ -367,7 +425,7 @@ export default function PostScreen() {
   // Requires: Description AND at least one of (Image OR Video)
   const canPost = Boolean(
     form.description.trim() && 
-    (uploadedImageUrl || uploadedVideoUrlAdmin || form.title.trim()) && 
+    (uploadedImageUrl || uploadedVideoUrlAdmin || embedUrl || form.title.trim()) && 
     !submitting
   );
 
@@ -528,6 +586,59 @@ export default function PostScreen() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Embed Video */}
+            <div className="space-y-1.5 rounded-xl border border-border bg-secondary/30 p-3">
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <VideoIcon size={10} /> Embed Video
+                <span className="font-normal normal-case text-muted-foreground/60">— YouTube, Vimeo, TikTok, Facebook</span>
+              </Label>
+              {embedUrl ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-lg px-3 py-2">
+                    <span className="text-xs font-medium text-primary">✓ {embedPlatform} video attached</span>
+                    <button type="button" onClick={resetEmbed} className="ml-auto text-muted-foreground hover:text-foreground">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <div className="rounded-lg overflow-hidden border border-border bg-black aspect-video">
+                    <iframe
+                      src={embedPreview || embedUrl}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title="Video preview"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={embedInput}
+                    onChange={(e) => { setEmbedInput(e.target.value); setEmbedError(""); }}
+                    placeholder="https://youtube.com/watch?v=..."
+                    className="bg-secondary border-border h-8 text-sm flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && embedInput.trim()) {
+                        e.preventDefault();
+                        checkEmbedUrl(embedInput.trim());
+                      }
+                    }}
+                    disabled={embedChecking}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => { if (embedInput.trim()) checkEmbedUrl(embedInput.trim()); }}
+                    disabled={embedChecking || !embedInput.trim()}
+                    size="sm"
+                    className="h-8 px-3 text-xs bg-primary text-primary-foreground"
+                  >
+                    {embedChecking ? <Loader2 size={14} className="animate-spin" /> : "Embed"}
+                  </Button>
+                </div>
+              )}
+              {embedError && <p className="text-[11px] text-destructive">{embedError}</p>}
             </div>
 
             {/* Description */}

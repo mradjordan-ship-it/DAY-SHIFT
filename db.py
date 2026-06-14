@@ -97,6 +97,7 @@ def init_db():
         ALTER TABLE videos ADD COLUMN IF NOT EXISTS event_date TEXT DEFAULT '';
         ALTER TABLE videos ADD COLUMN IF NOT EXISTS event_time TEXT DEFAULT '';
         ALTER TABLE videos ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ DEFAULT NULL;
+        ALTER TABLE videos ADD COLUMN IF NOT EXISTS embed_url TEXT DEFAULT '';
 
         CREATE TABLE IF NOT EXISTS likes (
             id SERIAL PRIMARY KEY,

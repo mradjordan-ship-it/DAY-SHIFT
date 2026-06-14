@@ -10,6 +10,8 @@ from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from .embed_utils import to_embed_url, get_platform_name
+
 api = APIRouter()
 
 # Keywords that suggest a field mapping
@@ -41,6 +43,8 @@ class ImportURLResponse(BaseModel):
     cuisine_type: str = ""
     image_url: str = ""
     video_url: str = ""
+    embed_url: str = ""
+    platform: str = ""
     source_domain: str = ""
     category: str = "general"
 
@@ -294,5 +298,17 @@ async def import_url(body: ImportURLRequest):
     # Auto-detect category
     all_text = f"{result.get('title', '')} {result.get('description', '')} {visible_text}"
     result["category"] = _detect_category(all_text, body.url)
+
+    # Detect embed URL for video platforms (YouTube, Vimeo, TikTok, Facebook, Instagram)
+    embed = to_embed_url(body.url)
+    if embed:
+        result["embed_url"] = embed
+        result["platform"] = get_platform_name(body.url)
+    # Also try the OG video URL if it's a video platform
+    elif result.get("video_url"):
+        embed = to_embed_url(result["video_url"])
+        if embed:
+            result["embed_url"] = embed
+            result["platform"] = get_platform_name(result["video_url"])
 
     return ImportURLResponse(**result)

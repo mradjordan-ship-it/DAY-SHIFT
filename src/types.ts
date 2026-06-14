@@ -47,6 +47,7 @@ export interface Video {
   hours: string;
   experience_level: string;
   location: string;
+  embed_url: string | null;
   likes: number;
   scheduled_at: string | null;
   created_at: string;

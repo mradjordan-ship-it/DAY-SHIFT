@@ -1,42 +1,32 @@
 [
   {
-    "content": "Add error monitoring (Sentry) — backend + frontend",
+    "content": "Backend: Add embed_url column to videos table + update POST/PATCH /api/videos",
     "id": "1",
     "status": "completed"
   },
   {
-    "content": "Add analytics (PostHog) — event tracking",
+    "content": "Backend: Add embed URL conversion helper (YouTube, Vimeo, TikTok, Facebook)",
     "id": "2",
     "status": "completed"
   },
   {
-    "content": "Password strength enforcement on registration",
+    "content": "Backend: Update import-url endpoint to return embed_url for video platforms",
     "id": "3",
     "status": "completed"
   },
   {
-    "content": "Account deletion flow (GDPR/CCPA legal requirement)",
+    "content": "Frontend: Add 'Embed Video' input field in PostScreen",
     "id": "4",
     "status": "completed"
   },
   {
-    "content": "Cookie consent banner",
+    "content": "Frontend: Render iframe embeds in FeedScreen + profile screens when embed_url present",
     "id": "5",
     "status": "completed"
   },
   {
-    "content": "User blocking + abuse protections",
+    "content": "Test: Build and verify end-to-end",
     "id": "6",
-    "status": "completed"
-  },
-  {
-    "content": "Onboarding walkthrough for new users",
-    "id": "7",
-    "status": "completed"
-  },
-  {
-    "content": "PWA install prompt + offline fallback page",
-    "id": "8",
-    "status": "completed"
+    "status": "in_progress"
   }
 ]
