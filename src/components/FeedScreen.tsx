@@ -938,20 +938,6 @@ function VideoCard({
               <Calendar size={10} /> Event{video.event_date ? ` · ${video.event_date}` : ""}{video.event_time ? ` ${video.event_time}` : ""}
             </Badge>
           )}
-          {(() => {
-            const age = (Date.now() - new Date(video.created_at).getTime()) / 1000;
-            if (age < 900) return (
-              <Badge className="font-bold border backdrop-blur text-[8px] px-1.5 py-0 border-lime-400/25 bg-lime-500/10 text-lime-300">
-                🔥 FRESH
-              </Badge>
-            );
-            if (age < 3600) return (
-              <Badge className="font-semibold border backdrop-blur text-[8px] px-1.5 py-0 border-yellow-400/20 bg-yellow-500/10 text-yellow-300">
-                ⚡ NEW
-              </Badge>
-            );
-            return null;
-          })()}
         </div>
       )}
 
