@@ -352,7 +352,13 @@ export default function PostScreen() {
         body: fd,
       });
       if (res.ok) {
-        setStep("done");
+        const data = await res.json();
+        // If sponsored post (non-admin), redirect to Boost for payment
+        if (form.category === "sponsored" && !isAdmin && data.id) {
+          navigate("boost", { videoId: data.id });
+        } else {
+          setStep("done");
+        }
       } else {
         const errorData = await res.json().catch(() => ({}));
         alert(errorData.detail || "Failed to post. Please try again.");
@@ -600,12 +606,7 @@ export default function PostScreen() {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
-                <Select onValueChange={(v) => {
-                  set("category", v);
-                  if (v === "sponsored" && !isAdmin) {
-                    navigate("boost");
-                  }
-                }} value={form.category}>
+                <Select onValueChange={(v) => set("category", v)} value={form.category}>
                   <SelectTrigger className="bg-secondary border-border h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>

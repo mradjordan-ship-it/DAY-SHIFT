@@ -632,12 +632,7 @@ export default function ProfileScreen() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Category</Label>
-                <Select onValueChange={(v) => {
-                  setPostForm({ ...postForm, category: v });
-                  if (v === "sponsored" && !user?.is_admin) {
-                    navigate("boost");
-                  }
-                }} value={postForm.category}>
+                <Select onValueChange={(v) => setPostForm({ ...postForm, category: v })} value={postForm.category}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
