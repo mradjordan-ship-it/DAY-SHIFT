@@ -419,23 +419,6 @@ export default function PostScreen() {
               {importSuccess && <p className="text-[11px] text-green-500">Fields pre-filled — review and add media before posting</p>}
             </div>
 
-            {/* Admin: Post type toggle */}
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Post as:</span>
-                <button type="button" onClick={() => setPostType("worker")}
-                  className={cn("px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1",
-                    postType === "worker" ? "bg-orange-500/20 text-orange-300 border border-orange-500/40" : "text-muted-foreground hover:text-foreground"
-                  )}
-                ><HardHat size={12} /> Crew</button>
-                <button type="button" onClick={() => setPostType("employer")}
-                  className={cn("px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1",
-                    postType === "employer" ? "bg-blue-500/20 text-blue-300 border border-blue-500/40" : "text-muted-foreground hover:text-foreground"
-                  )}
-                ><Building2 size={12} /> Kitchen</button>
-              </div>
-            )}
-
             {/* Media Uploads + Layout */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
