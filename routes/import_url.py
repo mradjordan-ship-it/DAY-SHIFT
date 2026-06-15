@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import uuid
 from urllib.parse import urlparse, urljoin
 
 import httpx
@@ -510,6 +511,57 @@ async def import_url(body: ImportURLRequest):
     # Make image URLs absolute
     if result.get("image_url"):
         result["image_url"] = _make_image_absolute(result["image_url"], str(resp.url))
+
+    # Download and re-host the image through our upload pipeline
+    # This ensures consistent sizing, compression, and avoids broken hotlinks
+    if result.get("image_url"):
+        try:
+            async with httpx.AsyncClient(
+                timeout=10.0,
+                follow_redirects=True,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+                },
+            ) as img_client:
+                img_resp = await img_client.get(result["image_url"])
+            if img_resp.status_code == 200 and len(img_resp.content) > 500:
+                img_content_type = img_resp.headers.get("content-type", "")
+                if any(t in img_content_type for t in ("image/", "application/octet-stream")):
+                    import aiofiles
+                    from .deps import UPLOAD_DIR as _UPLOAD_DIR
+
+                    # Determine extension
+                    ext = ".jpg"
+                    if "png" in img_content_type:
+                        ext = ".png"
+                    elif "webp" in img_content_type:
+                        ext = ".webp"
+                    elif "gif" in img_content_type:
+                        ext = ".gif"
+
+                    tmp_filename = f"import_{uuid.uuid4().hex}{ext}"
+                    tmp_dest = _UPLOAD_DIR / tmp_filename
+                    async with aiofiles.open(tmp_dest, "wb") as f:
+                        await f.write(img_resp.content)
+
+                    # Optimize: resize if >1200px, compress to JPEG
+                    try:
+                        from PIL import Image
+                        img = Image.open(tmp_dest)
+                        if img.mode in ("RGBA", "P"):
+                            img = img.convert("RGB")
+                        max_dim = 1200
+                        if max(img.size) > max_dim:
+                            img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+                        opt_filename = f"{uuid.uuid4().hex}.jpg"
+                        opt_dest = _UPLOAD_DIR / opt_filename
+                        img.save(opt_dest, "JPEG", quality=80, optimize=True)
+                        tmp_dest.unlink(missing_ok=True)
+                        result["image_url"] = f"/api/media/{opt_filename}"
+                    except Exception:
+                        result["image_url"] = f"/api/media/{tmp_filename}"
+        except Exception:
+            pass  # Keep the external URL as fallback
 
     result["source_domain"] = source_domain
 
