@@ -79,8 +79,6 @@ def list_boosts(current_user=Depends(get_current_user)):
 @api.post("/advertiser/boosts")
 def create_boost(body: BoostBody, request: Request, current_user=Depends(get_current_user)):
     import stripe
-    if not current_user.get("is_advertiser"):
-        raise HTTPException(403, "You must be an advertiser to boost posts")
     if body.tier not in TIERS:
         raise HTTPException(400, f"Invalid tier. Choose from: {list(TIERS.keys())}")
 

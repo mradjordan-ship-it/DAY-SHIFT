@@ -177,31 +177,7 @@ export default function BoostScreen() {
     );
   }
 
-  // Logged in but not advertiser
-  if (!user.is_advertiser) {
-    return (
-      <div className="h-full bg-black overflow-y-auto">
-        <div className="p-4">
-          <button onClick={() => navigate("feed")} className="flex items-center gap-2 text-muted-foreground mb-4">
-            <ArrowLeft size={16} /> Back
-          </button>
-          <h1 className="text-2xl text-white mb-1" style={{ fontFamily: "'Bebas Neue'" }}>Boost Your Posts</h1>
-          <p className="text-white/60 text-sm mb-6">Get more visibility on Day Shift</p>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <p className="text-white/60 text-sm">To boost posts, you need an advertiser account.</p>
-            <button
-              onClick={() => navigate("sponsor")}
-              className="mt-3 px-6 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-semibold ember-glow"
-            >
-              Contact Day Shift
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Payment processing overlay (after Stripe redirect)
+  // Main view (any logged-in user can boost)
   if (checkingPayment) {
     return (
       <div className="h-full bg-black overflow-y-auto">

@@ -66,8 +66,6 @@ export default function PostScreen() {
     scheduled_at: "",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [showAgreement, setShowAgreement] = useState(false);
-  const [agreementAccepted, setAgreementAccepted] = useState(user?.advertiser_agreement_accepted ?? false);
 
   // URL import state
   const [importUrl, setImportUrl] = useState("");
@@ -296,25 +294,7 @@ export default function PostScreen() {
     }
   };
 
-  const acceptAgreement = async () => {
-    try {
-      const res = await fetch("/api/advertiser/agreement", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setAgreementAccepted(true);
-        setShowAgreement(false);
-      }
-    } catch {}
-  };
-
   const handleSubmit = async () => {
-    // Advertiser must accept agreement before first post
-    if (user?.is_advertiser && !agreementAccepted) {
-      setShowAgreement(true);
-      return;
-    }
     doSubmit();
   };
 
@@ -758,53 +738,6 @@ export default function PostScreen() {
         )}
       </div>
 
-      {/* Advertiser Agreement Modal */}
-      {showAgreement && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-card border border-border rounded-2xl max-w-sm w-full p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-            <div className="text-center">
-              <span className="text-3xl">✦</span>
-              <h3 className="text-xl text-foreground mt-2" style={{ fontFamily: "'Bebas Neue'" }}>
-                Advertiser Terms & Conditions
-              </h3>
-            </div>
-            <div className="text-xs text-muted-foreground space-y-2 leading-relaxed">
-              <p className="text-foreground font-medium">PLEASE READ CAREFULLY. BY CLICKING "I AGREE," YOU BIND YOURSELF TO THESE TERMS.</p>
-              
-              <p><strong className="text-foreground">1. Content Responsibility.</strong> Advertiser assumes full and exclusive responsibility for all uploaded content, including but not limited to videos, images, text, and any other media. Advertiser represents and warrants that they possess all necessary rights, licenses, and permissions to use, reproduce, and distribute such content.</p>
-              
-              <p><strong className="text-foreground">2. Quality Standards.</strong> All submitted media shall be of commercially reasonable quality, including but not limited to proper lighting, clear resolution, and audible sound. Day Shift reserves the right, in its sole discretion, to reject or remove any content that fails to meet these standards, without obligation of refund.</p>
-              
-              <p><strong className="text-foreground">3. Prohibited Content.</strong> Advertiser shall not upload, publish, or transmit any content that: (a) constitutes hate speech, discrimination, or harassment based on race, ethnicity, religion, gender, sexual orientation, or disability; (b) depicts nudity, sexual content, or graphic violence; (c) promotes illegal activities; (d) contains inappropriate, obscene, or offensive material; or (e) infringes upon the intellectual property rights of any third party. Violation shall result in immediate content removal, forfeiture of any fees paid, and potential permanent account suspension.</p>
-              
-              <p><strong className="text-foreground">4. Disclaimer of Liability.</strong> DAY SHIFT, ITS OFFICERS, DIRECTORS, EMPLOYEES, AND AFFILIATES SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR RELATED TO ADVERTISER'S CONTENT, INCLUDING BUT NOT LIMITED TO CLAIMS OF FALSE ADVERTISING, DEFAMATION, INTELLECTUAL PROPERTY INFRINGEMENT, OR ANY OTHER CAUSE OF ACTION.</p>
-              
-              <p><strong className="text-foreground">5. Compliance with Laws.</strong> Advertiser shall comply with all applicable federal, state, and local laws, rules, and regulations, including without limitation the Federal Trade Commission's advertising disclosure guidelines and all applicable consumer protection statutes.</p>
-              
-              <p><strong className="text-foreground">6. Content Removal Rights.</strong> Day Shift retains the absolute right to refuse, modify, or remove any content at any time, for any reason or no reason, without prior notice, consent, or refund of any fees.</p>
-              
-              <p><strong className="text-foreground">7. Indemnification.</strong> Advertiser shall indemnify, defend, and hold harmless Day Shift and its officers, directors, employees, and agents from and against any and all claims, damages, losses, liabilities, costs, and expenses (including reasonable attorneys' fees) arising out of or related to Advertiser's content or breach of these Terms.</p>
-              
-              <p><strong className="text-foreground">8. No Warranties.</strong> DAY SHIFT PROVIDES ITS SERVICES "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. DAY SHIFT DOES NOT GUARANTEE ANY SPECIFIC NUMBER OF VIEWS, ENGAGEMENT METRICS, CLICKS, OR OTHER OUTCOMES.</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowAgreement(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-semibold"
-                onClick={acceptAgreement}
-              >
-                I Agree
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
