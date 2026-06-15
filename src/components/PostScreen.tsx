@@ -626,8 +626,8 @@ export default function PostScreen() {
               </div>
             )}
 
-            {/* Schedule Post — advertisers & admins only */}
-            {(user?.is_advertiser || isAdmin) && (
+            {/* Schedule Post */}
+            {user && (
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1"><Clock size={10} /> Schedule Post</Label>
                 <div className="grid grid-cols-2 gap-2">

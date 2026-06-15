@@ -352,7 +352,7 @@ export default function ProfileScreen() {
           </div>
         </button>
 
-        {user.is_advertiser && !user.is_admin && (
+        {!user.is_admin && (
           <button
             onClick={() => navigate("boost")}
             className="w-full mt-2 p-3 bg-gradient-to-r from-purple-500/10 to-violet-500/10 border border-purple-500/20 rounded-xl flex items-center gap-3 hover:from-purple-500/20 hover:to-violet-500/20 transition-colors text-left"

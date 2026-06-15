@@ -38,12 +38,12 @@ export default function AnalyticsScreen() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  if (!user?.is_advertiser) {
+  if (!user) {
     return (
       <div className="h-full bg-black flex flex-col items-center justify-center p-6 text-center">
         <BarChart3 size={40} className="text-white/20 mb-3" />
-        <p className="text-white/40 text-sm">Analytics available for advertisers</p>
-        <button onClick={() => navigate("feed")} className="mt-3 px-4 py-2 bg-white/10 text-white rounded-lg text-xs">Back to Feed</button>
+        <p className="text-white/40 text-sm">Sign in to view your analytics</p>
+        <button onClick={() => navigate("login")} className="mt-3 px-4 py-2 bg-white/10 text-white rounded-lg text-xs">Sign In</button>
       </div>
     );
   }
