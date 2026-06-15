@@ -369,71 +369,81 @@ export default function ProfileScreen() {
       </div>
 
       {/* Videos grid */}
-      {videos.length > 0 && (
-        <div className="px-5 mb-5">
-          <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
-            My Posts ({videos.length})
-          </h3>
-          <div className="grid grid-cols-3 gap-1.5">
-            {videos.map((video) => {
-              const ar = video.aspect_ratio || "9:16";
-              const cardAspect = ar === "9:16" ? "3/4" : ar === "4:5" ? "4/5" : ar === "1:1" ? "1/1" : ar === "16:9" ? "16/9" : "3/4";
-              return (
-              <div key={video.id} className="relative rounded-xl overflow-hidden bg-secondary group" style={{ aspectRatio: cardAspect }}>
-                {video.image_url ? (
-                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
-                ) : video.video_url ? (
-                  <video
-                    src={video.video_url}
-                    className="w-full h-full object-cover"
-                    muted
-                    playsInline
-                  />
-                ) : video.description ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-purple-950/60 p-2">
-                    <p className="text-white/80 text-[9px] text-center line-clamp-4">{video.description}</p>
-                  </div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                )}
-                
-                <button
-                  onClick={() => openEditPost(video)}
-                  className="absolute top-1 right-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Pencil size={12} className="text-white" />
-                </button>
-
-                <button
-                  onClick={() => handleDeleteVideo(video.id)}
-                  className="absolute top-1 left-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Trash2 size={12} className="text-white" />
-                </button>
-
-                <button
-                  onClick={() => navigate("boost", { videoId: video.id })}
-                  className="absolute top-9 right-1 z-10 w-7 h-7 bg-amber-500/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
-                >
-                  <Zap size={12} className="text-white" />
-                </button>
-
-                <div className="absolute bottom-1 left-1 right-1 pointer-events-none">
-                  <p className="text-white text-[10px] font-medium truncate drop-shadow">{video.title || video.description?.slice(0, 30)}</p>
-                </div>
-                <Badge
-                    className={`absolute top-9 left-1 text-[9px] border-0 py-0 px-1 pointer-events-none ${video.type === "worker" ? "bg-orange-500/80 text-white" : "bg-blue-500/80 text-white"}`}
-                  >
-                    <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-3 h-3" />
-                  </Badge>
-              </div>
-            );
-            })}
+      <div className="px-5 mb-5">
+        <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
+          My Posts ({videos.length})
+        </h3>
+        {videos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-border rounded-xl">
+            <p className="text-muted-foreground text-sm mb-2">No posts yet</p>
+            <button
+              onClick={() => navigate("post")}
+              className="text-xs text-primary font-semibold hover:underline"
+            >
+              Create your first post →
+            </button>
           </div>
+        ) : (
+        <div className="grid grid-cols-3 gap-1.5">
+          {videos.map((video) => {
+            const ar = video.aspect_ratio || "9:16";
+            const cardAspect = ar === "9:16" ? "3/4" : ar === "4:5" ? "4/5" : ar === "1:1" ? "1/1" : ar === "16:9" ? "16/9" : "3/4";
+            return (
+            <div key={video.id} className="relative rounded-xl overflow-hidden bg-secondary group" style={{ aspectRatio: cardAspect }}>
+              {video.image_url ? (
+                <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
+              ) : video.video_url ? (
+                <video
+                  src={video.video_url}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                />
+              ) : video.description ? (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-purple-950/60 p-2">
+                  <p className="text-white/80 text-[9px] text-center line-clamp-4">{video.description}</p>
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-8 h-8 text-muted-foreground" />
+                </div>
+              )}
+              
+              <button
+                onClick={() => openEditPost(video)}
+                className="absolute top-1 right-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
+              >
+                <Pencil size={12} className="text-white" />
+              </button>
+
+              <button
+                onClick={() => handleDeleteVideo(video.id)}
+                className="absolute top-1 left-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
+              >
+                <Trash2 size={12} className="text-white" />
+              </button>
+
+              <button
+                onClick={() => navigate("boost", { videoId: video.id })}
+                className="absolute top-9 right-1 z-10 w-7 h-7 bg-amber-500/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
+              >
+                <Zap size={12} className="text-white" />
+              </button>
+
+              <div className="absolute bottom-1 left-1 right-1 pointer-events-none">
+                <p className="text-white text-[10px] font-medium truncate drop-shadow">{video.title || video.description?.slice(0, 30)}</p>
+              </div>
+              <Badge
+                  className={`absolute top-9 left-1 text-[9px] border-0 py-0 px-1 pointer-events-none ${video.type === "worker" ? "bg-orange-500/80 text-white" : "bg-blue-500/80 text-white"}`}
+                >
+                  <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-3 h-3" />
+                </Badge>
+            </div>
+          );
+          })}
         </div>
-      )}
+        )}
+      </div>
 
       {/* Reviews */}
       {reviews.length > 0 && (
