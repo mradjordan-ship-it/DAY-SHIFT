@@ -61,7 +61,10 @@ export default function ProfileScreen() {
         fetch(`/api/videos?user_id=${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`/api/users/${user.id}/reviews`),
       ]);
-      if (vRes.ok) setVideos(await vRes.json());
+      if (vRes.ok) {
+        const vData = await vRes.json();
+        setVideos(Array.isArray(vData) ? vData : vData.videos || []);
+      }
       if (rRes.ok) setReviews(await rRes.json());
     };
     fetchData();

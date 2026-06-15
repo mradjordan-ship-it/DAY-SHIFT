@@ -31,7 +31,10 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
           fetch(`/api/users/${userId}/reviews`),
         ]);
         if (uRes.ok) setProfile(await uRes.json());
-        if (vRes.ok) setVideos(await vRes.json());
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          setVideos(Array.isArray(vData) ? vData : vData.videos || []);
+        }
         if (rRes.ok) setReviews(await rRes.json());
 
         // Check if user is blocked
