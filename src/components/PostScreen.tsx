@@ -189,6 +189,10 @@ export default function PostScreen() {
         setUploadedImageUrl(data.image_url);
         setImagePreview(data.image_url);
       }
+      // Auto-set aspect ratio from imported image dimensions
+      if (data.aspect_ratio) {
+        setAspectRatio(data.aspect_ratio);
+      }
       setImportSuccess(true);
       setImportUrl("");
       setTimeout(() => setImportSuccess(false), 3000);

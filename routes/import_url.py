@@ -56,6 +56,7 @@ class ImportURLResponse(BaseModel):
     source_domain: str = ""
     category: str = "general"
     contact_info: str = ""
+    aspect_ratio: str = "9:16"
 
 
 # ── Extraction helpers ──
@@ -548,6 +549,17 @@ async def import_url(body: ImportURLRequest):
                     try:
                         from PIL import Image
                         img = Image.open(tmp_dest)
+                        # Detect aspect ratio from image dimensions
+                        w, h = img.size
+                        ratio = w / h if h > 0 else 1
+                        if ratio < 0.65:
+                            result["aspect_ratio"] = "9:16"
+                        elif ratio < 0.85:
+                            result["aspect_ratio"] = "4:5"
+                        elif ratio < 1.15:
+                            result["aspect_ratio"] = "1:1"
+                        else:
+                            result["aspect_ratio"] = "16:9"
                         if img.mode in ("RGBA", "P"):
                             img = img.convert("RGB")
                         max_dim = 1200

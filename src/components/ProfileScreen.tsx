@@ -372,10 +372,13 @@ export default function ProfileScreen() {
             My Posts ({videos.length})
           </h3>
           <div className="grid grid-cols-3 gap-1.5">
-            {videos.map((video) => (
-              <div key={video.id} className="relative aspect-square rounded-xl overflow-hidden bg-secondary group">
+            {videos.map((video) => {
+              const ar = video.aspect_ratio || "9:16";
+              const cardAspect = ar === "9:16" ? "3/4" : ar === "4:5" ? "4/5" : ar === "1:1" ? "1/1" : ar === "16:9" ? "16/9" : "3/4";
+              return (
+              <div key={video.id} className="relative rounded-xl overflow-hidden bg-secondary group" style={{ aspectRatio: cardAspect }}>
                 {video.image_url ? (
-                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-contain" />
+                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
                 ) : video.video_url ? (
                   <video
                     src={video.video_url}
@@ -411,7 +414,8 @@ export default function ProfileScreen() {
                     <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-3 h-3" />
                   </Badge>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       )}

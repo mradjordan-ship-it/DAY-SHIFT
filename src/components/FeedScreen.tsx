@@ -764,7 +764,7 @@ function VideoCard({
 
   // Aspect ratio style for the media container
   const ar = video.aspect_ratio || "9:16";
-  const isDefault = ar === "9:16";
+  const cardAspect = ar === "9:16" ? "3/4" : ar === "4:5" ? "4/5" : ar === "1:1" ? "1/1" : ar === "16:9" ? "16/9" : "3/4";
 
   const sponsored = video.category === "sponsored";
 
@@ -774,8 +774,9 @@ function VideoCard({
       className={
         isHorizontal
           ? `relative bg-black w-full h-full overflow-hidden ${sponsored ? "sponsored-shimmer" : ""}`
-          : `relative bg-black w-full overflow-hidden rounded-xl ${sponsored ? "sponsored-shimmer border-2 border-amber-400/50" : "border border-white/10"} aspect-[3/4] md:aspect-[4/5]`
+          : `relative bg-black w-full overflow-hidden rounded-xl ${sponsored ? "sponsored-shimmer border-2 border-amber-400/50" : "border border-white/10"}`
       }
+      style={!isHorizontal ? { aspectRatio: cardAspect } : undefined}
     >
       {/* Media Content — image, video, or text */}
       {isHorizontal ? (
@@ -811,8 +812,8 @@ function VideoCard({
           <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} style={{ opacity: playing ? 1 : 0, transition: 'opacity 0.3s' }} />
         </>
       ) : video.image_url ? (
-        /* Image only — show full image without cropping */
-        <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-contain" />
+        /* Image only — card aspect matches image, so object-cover fills perfectly */
+        <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-cover" />
       ) : video.video_url ? (
         /* Video only */
         <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} />
