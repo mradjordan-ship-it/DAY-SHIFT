@@ -134,8 +134,6 @@ export default function BoostScreen() {
       headers: { Authorization: `Bearer ${token}` },
     });
     setBoosts((prev) => prev.filter((b) => b.id !== boostId));
-    setPaymentStep("select");
-    setCreatedBoost(null);
   };
 
   // Not logged in — show public tiers

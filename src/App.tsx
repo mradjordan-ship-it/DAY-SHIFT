@@ -454,8 +454,6 @@ export default function App() {
             {screen === "boost" && <BoostScreen />}
             {screen === "analytics" && <AnalyticsScreen />}
             </Suspense>
-            {screen === "boost" && <BoostScreen />}
-            {screen === "analytics" && <AnalyticsScreen />}
           </main>
 
           {/* Bottom Nav — hidden on auth/about/landing screens and fullscreen */}
