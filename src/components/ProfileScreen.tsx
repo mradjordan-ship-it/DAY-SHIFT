@@ -398,18 +398,23 @@ export default function ProfileScreen() {
                 
                 <button
                   onClick={() => openEditPost(video)}
-                  className="absolute inset-0 bg-black/10 hover:bg-black/40 transition-all z-10 flex flex-col items-center justify-center opacity-0 hover:opacity-100 focus:opacity-100"
+                  className="absolute top-1 right-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
                 >
-                  <div className="w-8 h-8 bg-black/60 backdrop-blur rounded-full flex items-center justify-center">
-                    <Pencil size={14} className="text-white" />
-                  </div>
+                  <Pencil size={12} className="text-white" />
+                </button>
+
+                <button
+                  onClick={() => handleDeleteVideo(video.id)}
+                  className="absolute top-1 left-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
+                >
+                  <Trash2 size={12} className="text-white" />
                 </button>
 
                 <div className="absolute bottom-1 left-1 right-1 pointer-events-none">
                   <p className="text-white text-[10px] font-medium truncate drop-shadow">{video.title || video.description?.slice(0, 30)}</p>
                 </div>
                 <Badge
-                    className={`absolute top-1 left-1 text-[9px] border-0 py-0 px-1 pointer-events-none ${video.type === "worker" ? "bg-orange-500/80 text-white" : "bg-blue-500/80 text-white"}`}
+                    className={`absolute top-9 left-1 text-[9px] border-0 py-0 px-1 pointer-events-none ${video.type === "worker" ? "bg-orange-500/80 text-white" : "bg-blue-500/80 text-white"}`}
                   >
                     <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-3 h-3" />
                   </Badge>
