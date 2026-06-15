@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle, Upload, X, Image as ImageIcon, VideoIcon, Tag, Calendar, Sparkles, Lightbulb, Clock, Star, HardHat, Building2, Link, Loader2 } from "lucide-react";
+import { CheckCircle, Upload, X, Image as ImageIcon, VideoIcon, Tag, Calendar, Sparkles, Lightbulb, Clock, Star, HardHat, Building2, Link, Loader2, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LiveRecorder from "./LiveRecorder";
 
@@ -25,6 +25,7 @@ export default function PostScreen() {
   const [postType] = useState<"worker" | "employer">(
     user?.role === "employer" ? "employer" : "worker"
   );
+  const [showRecorder, setShowRecorder] = useState(false);
 
   // Recording state (non-admin)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
@@ -262,7 +263,8 @@ export default function PostScreen() {
   };
 
   const resetAll = () => {
-    setStep(isAdmin ? "create" : "record");
+    setStep("create");
+    setShowRecorder(false);
     setRecordedBlob(null);
     setRecordedUrl("");
     setUploadedVideoUrl("");
@@ -282,7 +284,6 @@ export default function PostScreen() {
       const file = new File([blob], `recording_${Date.now()}.webm`, { type: blob.type });
       const data = await uploadWithProgress(file, "/api/upload/video", setVideoProgress);
       setUploadedVideoUrl(data.url);
-      setStep("create");
     } finally {
       setSubmitting(false);
     }
@@ -314,37 +315,23 @@ export default function PostScreen() {
     setSubmitting(true);
     try {
       const fd = new FormData();
+      const videoUrl = uploadedVideoUrlAdmin || uploadedVideoUrl || "";
 
-      if (isAdmin) {
-        // Admin post: unified — can have text + image + video
-        fd.append("type", postType);
-        fd.append("post_type", uploadedVideoUrlAdmin ? "video" : uploadedImageUrl ? "image" : "text");
-        fd.append("category", form.category);
-        fd.append("price", form.price);
-        fd.append("event_date", form.event_date);
-        fd.append("event_time", form.event_time);
-        fd.append("scheduled_at", form.scheduled_at);
-        fd.append("aspect_ratio", aspectRatio);
-        fd.append("title", form.title);
-        fd.append("description", form.description);
-        fd.append("video_url", uploadedVideoUrlAdmin || "");
-        fd.append("image_url", uploadedImageUrl || "");
-      } else {
-        // Regular user: can have text + image + video
-        fd.append("type", postType);
-        fd.append("post_type", uploadedVideoUrlAdmin ? "video" : uploadedImageUrl ? "image" : "text");
-        fd.append("category", form.category);
-        fd.append("price", form.price);
-        fd.append("event_date", form.event_date);
-        fd.append("event_time", form.event_time);
-        fd.append("scheduled_at", form.scheduled_at);
-        fd.append("aspect_ratio", aspectRatio);
-        fd.append("title", form.title);
-        fd.append("description", form.description);
-        fd.append("video_url", uploadedVideoUrlAdmin || "");
-        fd.append("image_url", uploadedImageUrl || "");
-        
-        // Extra metadata fields for regular users
+      fd.append("type", postType);
+      fd.append("post_type", videoUrl ? "video" : uploadedImageUrl ? "image" : "text");
+      fd.append("category", form.category);
+      fd.append("price", form.price);
+      fd.append("event_date", form.event_date);
+      fd.append("event_time", form.event_time);
+      fd.append("scheduled_at", form.scheduled_at);
+      fd.append("aspect_ratio", aspectRatio);
+      fd.append("title", form.title);
+      fd.append("description", form.description);
+      fd.append("video_url", videoUrl);
+      fd.append("image_url", uploadedImageUrl || "");
+
+      // Extra metadata fields (all users can add these)
+      if (!isAdmin) {
         fd.append("cuisine_type", form.cuisine_type);
         fd.append("pay_rate", form.pay_rate);
         fd.append("hours", form.hours);
@@ -368,12 +355,9 @@ export default function PostScreen() {
     }
   };
 
-  // Determine if post is valid
-  // Requires: Description AND at least one of (Image OR Video)
+  // Determine if post is valid — text-only posts just need a description
   const canPost = Boolean(
-    form.description.trim() && 
-    (uploadedImageUrl || uploadedVideoUrlAdmin || form.title.trim()) && 
-    !submitting
+    form.description.trim() && !submitting
   );
 
   return (
@@ -383,44 +367,13 @@ export default function PostScreen() {
         <div
           className="h-full bg-primary transition-all duration-500"
           style={{
-            width: step === "create" ? "50%" : step === "record" ? "50%" : "100%",
+            width: step === "create" ? "50%" : "100%",
           }}
         />
       </div>
 
       <div className="p-4">
-        {/* Step: record — non-admin camera recording */}
-        {step === "record" && !isAdmin && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-3xl text-foreground mb-1" style={{ fontFamily: "'Bebas Neue'" }}>
-                Record Your Video
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Speak directly to {postType === "worker" ? "spots" : "crew"} — up to 60 seconds
-              </p>
-            </div>
-
-            {submitting ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-200"
-                    style={{ width: `${videoProgress}%` }}
-                  />
-                </div>
-                <p className="text-muted-foreground text-sm">Uploading… {videoProgress}%</p>
-              </div>
-            ) : (
-              <LiveRecorder
-                onRecorded={handleRecorded}
-                onCancel={() => navigate("feed")}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Step: create — admin unified post OR non-admin details */}
+        {/* Step: create — unified post form for all users */}
         {step === "create" && (
           <div className="space-y-3">
             <div className="flex items-baseline justify-between">
@@ -429,7 +382,7 @@ export default function PostScreen() {
                   Create a Post
                 </h2>
                 <p className="text-muted-foreground text-[11px]">
-                  <span className="text-amber-500 font-semibold"><Lightbulb size={11} className="inline mr-0.5" />Video posts get 3x more matches!</span>
+                  <span className="text-amber-500 font-semibold"><Lightbulb size={11} className="inline mr-0.5" />Add media for 3x more matches — or just post text!</span>
                 </p>
               </div>
             </div>
@@ -479,7 +432,7 @@ export default function PostScreen() {
                   <span className="text-[9px] text-muted-foreground ml-1">Wide</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                   <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", imagePreview ? "border-border bg-black" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
@@ -532,8 +485,85 @@ export default function PostScreen() {
                     </div>
                   )}
                 </div>
+                {/* Camera record button */}
+                <div className="space-y-1">
+                  <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", showRecorder ? "border-primary bg-primary/10" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
+                    <button
+                      onClick={() => setShowRecorder(!showRecorder)}
+                      disabled={submitting}
+                      className="w-full h-28 flex flex-col items-center justify-center"
+                    >
+                      {recordedUrl ? (
+                        <>
+                          <CheckCircle className="w-6 h-6 text-green-500 mb-1" />
+                          <span className="text-xs font-medium text-green-500">✓ Recorded</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-6 h-6 text-muted-foreground mb-1" />
+                          <span className="text-xs font-medium text-muted-foreground">🎥 Camera</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Inline Camera Recorder */}
+            {showRecorder && (
+              <div className="space-y-2 rounded-xl border border-border bg-secondary/30 p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <Camera size={10} /> Record Video
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground"
+                    onClick={() => setShowRecorder(false)}
+                  >
+                    <X size={14} /> Close
+                  </Button>
+                </div>
+                {submitting ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-3">
+                    <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-200"
+                        style={{ width: `${videoProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-muted-foreground text-sm">Uploading… {videoProgress}%</p>
+                  </div>
+                ) : (
+                  <LiveRecorder
+                    onRecorded={(blob, url) => {
+                      handleRecorded(blob, url);
+                      setShowRecorder(false);
+                    }}
+                    onCancel={() => setShowRecorder(false)}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Recorded video preview */}
+            {recordedUrl && !showRecorder && (
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="relative">
+                  <video src={recordedUrl} controls className="w-full max-h-44 object-cover" />
+                  <button
+                    onClick={() => { setRecordedBlob(null); setRecordedUrl(""); setUploadedVideoUrl(""); }}
+                    className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full text-white hover:bg-black/70 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground px-2 py-1 bg-secondary/30">✓ Recording uploaded</p>
+              </div>
+            )}
 
             {/* Description */}
             <div className="space-y-1">

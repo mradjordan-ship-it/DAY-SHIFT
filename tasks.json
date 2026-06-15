@@ -1,26 +1,26 @@
 [
   {
-    "content": "Fix: admin posts always showing as sponsored — change to only show sponsored when category=sponsored",
+    "content": "Remove forced record step block from PostScreen JSX",
     "id": "1",
     "status": "completed"
   },
   {
-    "content": "Fix: add 'Sponsored' option to profile edit dialog category dropdown + fix category change for posts currently in 'sponsored'",
+    "content": "Add inline camera recorder toggle in media section",
     "id": "2",
     "status": "completed"
   },
   {
-    "content": "Remove: strip all embed_url code (backend + frontend)",
+    "content": "Simplify progress bar and unify posting for all users",
     "id": "3",
     "status": "completed"
   },
   {
-    "content": "Improve: make Import from URL the best it can be",
+    "content": "Update canPost validation for text-only posts",
     "id": "4",
     "status": "completed"
   },
   {
-    "content": "Test: build and verify all changes",
+    "content": "Test the unified posting flow",
     "id": "5",
     "status": "in_progress"
   }
