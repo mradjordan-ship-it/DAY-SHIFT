@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useAuth, useNav } from "../App";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -36,6 +39,11 @@ import {
   Building2,
   Calendar,
   Tag,
+  Pencil,
+  X,
+  ImageIcon,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import { RoleIcon, CategoryIcon } from "./Icons";
 
@@ -70,14 +78,26 @@ interface AdminUser {
 interface AdminVideo {
   id: number;
   title: string;
+  description: string;
   type: string;
   category: string;
+  image_url: string | null;
+  video_url: string | null;
+  aspect_ratio: string;
   user_id: number;
   user_name: string;
   user_role: string;
   created_at: string;
   likes: number;
   scheduled_at: string | null;
+  cuisine_type: string | null;
+  pay_rate: string | null;
+  hours: string | null;
+  experience_level: string | null;
+  location: string | null;
+  price: string | null;
+  event_date: string | null;
+  event_time: string | null;
 }
 
 interface ScheduledPost {
@@ -138,6 +158,9 @@ export default function AdminScreen() {
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<number | null>(null);
+  const [editingVideo, setEditingVideo] = useState<AdminVideo | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editSaving, setEditSaving] = useState(false);
 
   const fetchSupport = async () => {
     const headers = { Authorization: `Bearer ${token}` };
@@ -233,6 +256,49 @@ export default function AdminScreen() {
     return res.ok;
   };
 
+  const openEditVideo = (video: AdminVideo) => {
+    setEditingVideo(video);
+    setEditForm({
+      title: video.title || "",
+      description: video.description || "",
+      category: video.category || "general",
+      price: video.price || "",
+      event_date: video.event_date || "",
+      event_time: video.event_time || "",
+      aspect_ratio: video.aspect_ratio || "9:16",
+      cuisine_type: video.cuisine_type || "",
+      pay_rate: video.pay_rate || "",
+      hours: video.hours || "",
+      experience_level: video.experience_level || "",
+      location: video.location || "",
+    });
+  };
+
+  const saveEditVideo = async () => {
+    if (!editingVideo) return;
+    setEditSaving(true);
+    try {
+      const fd = new FormData();
+      for (const [k, v] of Object.entries(editForm)) {
+        if (v !== undefined && v !== null) fd.append(k, v);
+      }
+      const res = await fetch(`/api/admin/videos/${editingVideo.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setVideos((prev) => prev.map((v) => (v.id === editingVideo.id ? { ...v, ...updated } : v)));
+        setEditingVideo(null);
+      } else {
+        alert("Failed to save changes");
+      }
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   if (!user?.is_admin) {
     return (
       <div className="flex flex-col items-center justify-center h-64 p-6 text-center">
@@ -301,7 +367,7 @@ export default function AdminScreen() {
             currentUserId={user.id}
           />
         )}
-        {tab === "videos" && <VideosTab videos={videos} onDelete={deleteVideo} onBoost={boostVideo} />}
+        {tab === "videos" && <VideosTab videos={videos} onDelete={deleteVideo} onBoost={boostVideo} onEdit={openEditVideo} />}
         {tab === "scheduled" && <ScheduledTab posts={scheduledPosts} />}
         {tab === "matches" && <MatchesTab matches={matches} />}
         {tab === "reports" && (
@@ -323,6 +389,134 @@ export default function AdminScreen() {
         {tab === "tips" && <TipsTab tips={tips} onRefresh={fetchSupport} />}
         {tab === "boosts" && <BoostsTab token={token!} />}
       </div>
+
+      {/* Edit Post Dialog */}
+      {editingVideo && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Bebas Neue'" }}>
+                Edit Post #{editingVideo.id}
+              </h3>
+              <button onClick={() => setEditingVideo(null)} className="text-muted-foreground hover:text-foreground">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {/* Thumbnail */}
+              {(editingVideo.image_url || editingVideo.video_url) && (
+                <div className="rounded-lg overflow-hidden bg-black">
+                  {editingVideo.image_url ? (
+                    <img src={editingVideo.image_url} alt="" className="w-full max-h-40 object-contain" />
+                  ) : (
+                    <video src={editingVideo.video_url!} className="w-full max-h-40" controls />
+                  )}
+                </div>
+              )}
+              <div className="space-y-0.5">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Title</Label>
+                <Input value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+              </div>
+              <div className="space-y-0.5">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Description</Label>
+                <Textarea value={editForm.description || ""} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} className="bg-secondary border-border text-sm resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
+                  <Select value={editForm.category || "general"} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
+                    <SelectTrigger className="bg-secondary border-border h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general"><Sparkles size={12} className="inline mr-1" /> General</SelectItem>
+                      <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>
+                      <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>
+                      <SelectItem value="sale"><Tag size={12} className="inline mr-1" /> For Sale</SelectItem>
+                      <SelectItem value="event"><Calendar size={12} className="inline mr-1" /> Event</SelectItem>
+                      <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Aspect Ratio</Label>
+                  <Select value={editForm.aspect_ratio || "9:16"} onValueChange={(v) => setEditForm({ ...editForm, aspect_ratio: v })}>
+                    <SelectTrigger className="bg-secondary border-border h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="9:16">9:16</SelectItem>
+                      <SelectItem value="4:5">4:5</SelectItem>
+                      <SelectItem value="1:1">1:1</SelectItem>
+                      <SelectItem value="16:9">16:9</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Location</Label>
+                  <Input value={editForm.location || ""} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+                </div>
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pay Rate</Label>
+                  <Input value={editForm.pay_rate || ""} onChange={(e) => setEditForm({ ...editForm, pay_rate: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cuisine Type</Label>
+                  <Input value={editForm.cuisine_type || ""} onChange={(e) => setEditForm({ ...editForm, cuisine_type: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+                </div>
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Hours</Label>
+                  <Input value={editForm.hours || ""} onChange={(e) => setEditForm({ ...editForm, hours: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Experience</Label>
+                  <Select value={editForm.experience_level || ""} onValueChange={(v) => setEditForm({ ...editForm, experience_level: v })}>
+                    <SelectTrigger className="bg-secondary border-border h-8 text-xs">
+                      <SelectValue placeholder="Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="entry">Entry Level</SelectItem>
+                      <SelectItem value="mid">2–5 Years</SelectItem>
+                      <SelectItem value="senior">5+ Years</SelectItem>
+                      <SelectItem value="executive">Executive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-0.5">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</Label>
+                  <Input value={editForm.price || ""} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+                </div>
+              </div>
+              {(editForm.category === "event" || editingVideo.category === "event") && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Event Date</Label>
+                    <Input type="date" value={editForm.event_date || ""} onChange={(e) => setEditForm({ ...editForm, event_date: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Event Time</Label>
+                    <Input type="time" value={editForm.event_time || ""} onChange={(e) => setEditForm({ ...editForm, event_time: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEditingVideo(null)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={saveEditVideo} disabled={editSaving} className="flex-1 bg-primary text-primary-foreground">
+                  {editSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -479,7 +673,7 @@ function UsersTab({
   );
 }
 
-function VideosTab({ videos, onDelete, onBoost }: { videos: AdminVideo[]; onDelete: (id: number) => void; onBoost: (id: number, tier: string, days: number) => Promise<boolean> }) {
+function VideosTab({ videos, onDelete, onBoost, onEdit }: { videos: AdminVideo[]; onDelete: (id: number) => void; onBoost: (id: number, tier: string, days: number) => Promise<boolean>; onEdit: (video: AdminVideo) => void }) {
   const [expandedUser, setExpandedUser] = useState<number | null>(null);
   const [boostingVideoId, setBoostingVideoId] = useState<number | null>(null);
   const [boostTier, setBoostTier] = useState<string>("boost");
@@ -533,7 +727,7 @@ function VideosTab({ videos, onDelete, onBoost }: { videos: AdminVideo[]; onDele
             </div>
             <div className="flex items-center gap-2">
               <Badge className={`text-[10px] border-0 ${data.user_role === "worker" ? "bg-orange-500/20 text-orange-300" : "bg-blue-500/20 text-blue-300"}`}>
-                {data.videos.length} video{data.videos.length !== 1 ? "s" : ""}
+                {data.videos.length} post{data.videos.length !== 1 ? "s" : ""}
               </Badge>
               {expandedUser === Number(userId) ? (
                 <ChevronUp size={16} className="text-muted-foreground" />
@@ -548,20 +742,47 @@ function VideosTab({ videos, onDelete, onBoost }: { videos: AdminVideo[]; onDele
             <div className="border-t border-border divide-y divide-border">
               {data.videos.map((v) => (
                 <div key={v.id} className="p-3 bg-secondary/20">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
+                    {/* Thumbnail */}
+                    {v.image_url ? (
+                      <img src={v.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
+                    ) : v.video_url ? (
+                      <div className="w-16 h-16 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                        <Video size={20} />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[10px]">
+                        Text
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground text-sm truncate">{v.title}</span>
+                        <span className="font-medium text-foreground text-sm truncate">{v.title || "Untitled"}</span>
                         {v.category && (
                           <Badge className="text-[9px] border-0 bg-muted text-muted-foreground">
                             {v.category}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {v.likes} likes · {new Date(v.created_at).toLocaleDateString()}
-                      </p>
+                      {v.description && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{v.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {v.location && <span className="text-[10px] text-muted-foreground">📍 {v.location}</span>}
+                        {v.pay_rate && <span className="text-[10px] text-muted-foreground">💰 {v.pay_rate}</span>}
+                        <span className="text-[10px] text-muted-foreground">{v.likes} likes · {new Date(v.created_at).toLocaleDateString()}</span>
+                      </div>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onEdit(v)}
+                      className="text-xs flex-shrink-0"
+                    >
+                      <Pencil size={12} className="mr-1" /> Edit
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -570,9 +791,7 @@ function VideosTab({ videos, onDelete, onBoost }: { videos: AdminVideo[]; onDele
                     >
                       <Trash2 size={12} />
                     </Button>
-                  </div>
-                  {/* Boost controls */}
-                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                    <div className="flex-1" />
                     <Zap size={12} className="text-amber-400" />
                     <Select value={boostTier} onValueChange={setBoostTier}>
                       <SelectTrigger className="h-7 w-24 text-xs bg-secondary border-border">

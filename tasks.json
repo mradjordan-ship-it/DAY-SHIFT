@@ -1,27 +1,17 @@
 [
   {
-    "content": "Remove forced record step block from PostScreen JSX",
+    "content": "Add admin PATCH /admin/videos/{id} endpoint for editing any post",
     "id": "1",
     "status": "completed"
   },
   {
-    "content": "Add inline camera recorder toggle in media section",
+    "content": "Add image preview, description, edit button + dialog to AdminScreen VideosTab",
     "id": "2",
-    "status": "completed"
+    "status": "in_progress"
   },
   {
-    "content": "Simplify progress bar and unify posting for all users",
+    "content": "Test admin post management",
     "id": "3",
-    "status": "completed"
-  },
-  {
-    "content": "Update canPost validation for text-only posts",
-    "id": "4",
-    "status": "completed"
-  },
-  {
-    "content": "Test the unified posting flow",
-    "id": "5",
-    "status": "completed"
+    "status": "pending"
   }
 ]

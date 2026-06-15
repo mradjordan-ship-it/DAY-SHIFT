@@ -1,7 +1,7 @@
 """Admin routes for Day Shift Marketplace."""
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Form
 
 from .deps import get_conn, require_admin
 from .models import TIERS, AdminBoostBody, AdminCreateBoostBody
@@ -246,6 +246,72 @@ def admin_delete_video(video_id: int, admin=Depends(require_admin)):
         cur.close()
         conn.close()
     return {"ok": True}
+
+
+@api.patch("/admin/videos/{video_id}")
+def admin_update_video(
+    video_id: int,
+    title: str = Form(None),
+    description: str = Form(None),
+    category: str = Form(None),
+    price: str = Form(None),
+    event_date: str = Form(None),
+    event_time: str = Form(None),
+    aspect_ratio: str = Form(None),
+    cuisine_type: str = Form(None),
+    pay_rate: str = Form(None),
+    hours: str = Form(None),
+    experience_level: str = Form(None),
+    location: str = Form(None),
+    admin=Depends(require_admin),
+):
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM videos WHERE id = %s", (video_id,))
+        if not cur.fetchone():
+            raise HTTPException(404, "Video not found")
+
+        updates = []
+        params = []
+
+        for field, value in [
+            ("title", title),
+            ("description", description),
+            ("category", category),
+            ("price", price),
+            ("event_date", event_date),
+            ("event_time", event_time),
+            ("aspect_ratio", aspect_ratio),
+            ("cuisine_type", cuisine_type),
+            ("pay_rate", pay_rate),
+            ("hours", hours),
+            ("experience_level", experience_level),
+            ("location", location),
+        ]:
+            if value is not None:
+                updates.append(f"{field} = %s")
+                params.append(value)
+
+        if not updates:
+            return {"ok": True}
+
+        params.append(video_id)
+        cur.execute(f"UPDATE videos SET {', '.join(updates)} WHERE id = %s RETURNING *", tuple(params))
+        video = dict(cur.fetchone())
+        conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, "Internal error — please try again")
+    finally:
+        cur.close()
+        conn.close()
+
+    if video.get("created_at"):
+        video["created_at"] = video["created_at"].isoformat()
+    return video
 
 
 @api.get("/admin/scheduled")
