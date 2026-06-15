@@ -403,7 +403,7 @@ export default function FeedScreen() {
       {/* Feed — snap scroll on mobile, 2-col grid on desktop */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 px-2 pb-6 pt-3 md:pt-2 items-start"
+        className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 px-2 pb-6 pt-3 md:pt-2 items-start auto-rows-min"
       >
         {loading ? (
           <div className="flex items-center justify-center h-full col-span-full">
@@ -776,7 +776,7 @@ function VideoCard({
           ? `relative bg-black w-full h-full overflow-hidden ${sponsored ? "sponsored-shimmer" : ""}`
           : `relative bg-black w-full overflow-hidden rounded-xl ${sponsored ? "sponsored-shimmer border-2 border-amber-400/50" : "border border-white/10"}`
       }
-      style={!isHorizontal ? { aspectRatio: cardAspect } : undefined}
+      style={!isHorizontal ? { aspectRatio: cardAspect, minHeight: '12rem' } : undefined}
     >
       {/* Media Content — image, video, or text */}
       {isHorizontal ? (
@@ -809,15 +809,15 @@ function VideoCard({
         /* Both image and video */
         <>
           <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-cover" />
-          <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} style={{ opacity: playing ? 1 : 0, transition: 'opacity 0.3s' }} />
+          {!videoError && <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} style={{ opacity: playing ? 1 : 0, transition: 'opacity 0.3s' }} onError={() => setVideoError(true)} />}
         </>
       ) : video.image_url ? (
         /* Image only — card aspect matches image, so object-cover fills perfectly */
         <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-cover" />
-      ) : video.video_url ? (
+      ) : video.video_url && !videoError ? (
         /* Video only */
-        <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} />
-      ) : video.description ? (
+        <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} onError={() => setVideoError(true)} />
+      ) : (video.video_url && videoError) || video.description ? (
         /* Text only — no media */
         <div
           className="absolute inset-0 flex items-start justify-center px-5 pt-16 pb-20"
