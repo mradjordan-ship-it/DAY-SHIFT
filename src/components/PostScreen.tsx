@@ -436,12 +436,7 @@ export default function PostScreen() {
                 <div className="space-y-1">
                   <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
                   <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", imagePreview ? "border-border bg-black" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
-                    <div className={cn("w-full flex items-center justify-center overflow-hidden", !imagePreview && "h-28", imagePreview && {
-                      "aspect-[9/16]": aspectRatio === "9:16",
-                      "aspect-[4/5]": aspectRatio === "4:5",
-                      "aspect-square": aspectRatio === "1:1",
-                      "aspect-video": aspectRatio === "16:9",
-                    })} style={imagePreview ? { maxHeight: '11rem' } : undefined}>
+                    <div className="w-full flex items-center justify-center overflow-hidden" style={imagePreview ? { aspectRatio: aspectRatio === "9:16" ? "9/16" : aspectRatio === "4:5" ? "4/5" : aspectRatio === "1:1" ? "1/1" : "16/9" } : { height: '7rem' }}>
                       {imagePreview ? (
                         <div className="relative w-full h-full">
                           <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
@@ -467,12 +462,7 @@ export default function PostScreen() {
                 <div className="space-y-1">
                   <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/webm" onChange={handleVideoSelectAdmin} className="hidden" />
                   <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", videoPreviewAdmin ? "border-border bg-black" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
-                    <div className={cn("w-full flex items-center justify-center overflow-hidden", !videoPreviewAdmin && "h-28", videoPreviewAdmin && {
-                      "aspect-[9/16]": aspectRatio === "9:16",
-                      "aspect-[4/5]": aspectRatio === "4:5",
-                      "aspect-square": aspectRatio === "1:1",
-                      "aspect-video": aspectRatio === "16:9",
-                    })} style={videoPreviewAdmin ? { maxHeight: '11rem' } : undefined}>
+                    <div className="w-full flex items-center justify-center overflow-hidden" style={videoPreviewAdmin ? { aspectRatio: aspectRatio === "9:16" ? "9/16" : aspectRatio === "4:5" ? "4/5" : aspectRatio === "1:1" ? "1/1" : "16/9" } : { height: '7rem' }}>
                       {videoPreviewAdmin ? (
                         <div className="relative w-full h-full">
                           <video src={videoPreviewAdmin} controls className="w-full h-full object-cover" />
@@ -562,12 +552,7 @@ export default function PostScreen() {
             {/* Recorded video preview */}
             {recordedUrl && !showRecorder && (
               <div className="rounded-xl border border-border overflow-hidden">
-                <div className={cn("relative", {
-                  "aspect-[9/16]": aspectRatio === "9:16",
-                  "aspect-[4/5]": aspectRatio === "4:5",
-                  "aspect-square": aspectRatio === "1:1",
-                  "aspect-video": aspectRatio === "16:9",
-                })} style={{ maxHeight: '11rem' }}>
+                <div className="relative" style={{ aspectRatio: aspectRatio === "9:16" ? "9/16" : aspectRatio === "4:5" ? "4/5" : aspectRatio === "1:1" ? "1/1" : "16/9" }}>
                   <video src={recordedUrl} controls className="w-full h-full object-cover" />
                   <button
                     onClick={() => { setRecordedBlob(null); setRecordedUrl(""); setUploadedVideoUrl(""); }}
