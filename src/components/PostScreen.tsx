@@ -48,6 +48,9 @@ export default function PostScreen() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
+  // Default category based on role: crew → "crew", employer → "sale", admin → "general"
+  const defaultCategory = isAdmin ? "general" : postType === "worker" ? "crew" : "sale";
+
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -56,7 +59,7 @@ export default function PostScreen() {
     hours: "",
     experience_level: "",
     location: "",
-    category: "general",
+    category: defaultCategory,
     price: "",
     event_date: "",
     event_time: "",
@@ -275,7 +278,7 @@ export default function PostScreen() {
     resetImage();
     resetVideo();
     setAspectRatio("9:16");
-    setForm({ title: "", description: "", cuisine_type: "", pay_rate: "", hours: "", experience_level: "", location: "", category: "general", price: "", event_date: "", event_time: "", scheduled_at: "" });
+    setForm({ title: "", description: "", cuisine_type: "", pay_rate: "", hours: "", experience_level: "", location: "", category: defaultCategory, price: "", event_date: "", event_time: "", scheduled_at: "" });
   };
 
   // Non-admin: recorded video
@@ -597,17 +600,22 @@ export default function PostScreen() {
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
-                <Select onValueChange={(v) => set("category", v)} value={form.category}>
+                <Select onValueChange={(v) => {
+                  set("category", v);
+                  if (v === "sponsored" && !isAdmin) {
+                    navigate("boost");
+                  }
+                }} value={form.category}>
                   <SelectTrigger className="bg-secondary border-border h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="general"><Sparkles size={12} className="inline mr-1" /> General</SelectItem>
-                    <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>
-                    <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>
+                    {isAdmin && <SelectItem value="general"><Sparkles size={12} className="inline mr-1" /> General</SelectItem>}
+                    {isAdmin && <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>}
+                    {(postType === "worker" || isAdmin) && <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>}
                     <SelectItem value="sale"><Tag size={12} className="inline mr-1" /> For Sale</SelectItem>
                     <SelectItem value="event"><Calendar size={12} className="inline mr-1" /> Event</SelectItem>
-                    {isAdmin && (
+                    {(postType === "employer" || isAdmin) && (
                       <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
                     )}
                   </SelectContent>
