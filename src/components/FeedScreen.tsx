@@ -882,14 +882,12 @@ function VideoCard({
           {video.category !== "sponsored" && (
             <Badge
               className={cn("font-semibold border-0 backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 flex items-center gap-1",
-                video.author_is_admin
-                  ? "bg-amber-500/20 text-amber-300"
-                  : video.type === "worker"
+                video.type === "worker"
                   ? "bg-orange-500/20 text-orange-300"
                   : "bg-blue-500/20 text-blue-300"
               )}
             >
-              {video.author_is_admin ? <><Star size={12} /> Admin</> : video.type === "worker" ? <><HardHat size={12} /> Crew</> : <><Building2 size={12} /> Kitchen</>}
+              {video.type === "worker" ? <><HardHat size={12} /> Crew</> : <><Building2 size={12} /> Kitchen</>}
             </Badge>
           )}
           {video.category === "sale" && (
@@ -918,14 +916,12 @@ function VideoCard({
           {video.category !== "sponsored" && (
             <Badge
               className={cn("font-semibold border-0 backdrop-blur text-[8px] px-1.5 py-0 flex items-center gap-0.5",
-                video.author_is_admin
-                  ? "bg-amber-500/20 text-amber-300"
-                  : video.type === "worker"
+                video.type === "worker"
                   ? "bg-orange-500/20 text-orange-300"
                   : "bg-blue-500/20 text-blue-300"
               )}
             >
-              {video.author_is_admin ? <><Star size={10} /> Admin</> : video.type === "worker" ? <><HardHat size={10} /> Crew</> : <><Building2 size={10} /> Kitchen</>}
+              {video.type === "worker" ? <><HardHat size={10} /> Crew</> : <><Building2 size={10} /> Kitchen</>}
             </Badge>
           )}
           {video.category === "sale" && (
@@ -1182,7 +1178,7 @@ function VideoCard({
               />
               <div className="flex-1 min-w-0">
                 <p className="text-foreground text-sm font-medium truncate">{video.author_name}</p>
-                <p className="text-muted-foreground text-xs">{video.author_is_admin ? "✦ Admin" : video.type === "worker" ? "Crew" : "Kitchen"}</p>
+                <p className="text-muted-foreground text-xs">{video.type === "worker" ? "Crew" : "Kitchen"}</p>
               </div>
               <button
                 onClick={() => {
