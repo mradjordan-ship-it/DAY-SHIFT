@@ -44,7 +44,6 @@ export default function BoostScreen() {
   const { user, token } = useAuth();
   const { navigate, params: navParams } = useNav();
   const preselectedVideoId = navParams?.videoId as number | undefined;
-  const [subscription, setSubscription] = useState<AdvertiserSubscription | null>(null);
   const [boosts, setBoosts] = useState<PostBoost[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<string | null>(preselectedVideoId ? "boost" : null);
@@ -90,11 +89,7 @@ export default function BoostScreen() {
     if (!token) { setLoading(false); return; }
     const loadData = async () => {
       try {
-        const [subRes, boostRes] = await Promise.all([
-          fetch("/api/advertiser/subscription", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("/api/advertiser/boosts", { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-        if (subRes.ok) setSubscription(await subRes.json());
+        const boostRes = await fetch("/api/advertiser/boosts", { headers: { Authorization: `Bearer ${token}` } });
         if (boostRes.ok) setBoosts(await boostRes.json());
       } finally {
         setLoading(false);
@@ -204,7 +199,7 @@ export default function BoostScreen() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl text-white" style={{ fontFamily: "'Bebas Neue'" }}>Boost Your Posts</h1>
-            <p className="text-white/50 text-xs">{subscription?.tier ? `Tier: ${subscription.tier}` : "Free tier"}</p>
+            <p className="text-white/50 text-xs">Get more visibility on Day Shift</p>
           </div>
           <button
             onClick={() => navigate("analytics")}
