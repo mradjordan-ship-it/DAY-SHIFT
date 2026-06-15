@@ -3,7 +3,7 @@ import type { User, Video, Review } from "../types";
 import { useAuth, useNav } from "../App";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Play, ArrowLeft, MessageCircle, Flag, Ban, ShieldCheck } from "lucide-react";
+import { Star, Play, ArrowLeft, MessageCircle, Flag, Ban, ShieldCheck, Video as VideoIcon } from "lucide-react";
 import { RoleIcon } from "./Icons";
 import { trackEvent } from "../lib/analytics";
 
@@ -249,45 +249,52 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
       )}
 
       {/* Videos */}
-      {videos.length > 0 && (
-        <div className="px-5 mb-5">
-          <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
-                      Posts ({videos.length})
-          </h3>
-          <div className="grid grid-cols-2 gap-2">
-            {videos.map((video) => {
-              const ar = video.aspect_ratio || "9:16";
-              const cardAspect = ar === "9:16" ? "3/4" : ar === "4:5" ? "4/5" : ar === "1:1" ? "1/1" : ar === "16:9" ? "16/9" : "3/4";
-              return (
-              <div key={video.id} className="relative bg-card rounded-xl overflow-hidden border border-border" style={{ aspectRatio: cardAspect }}>
-                {video.image_url ? (
-                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
-                ) : video.video_url ? (
-                  <video src={video.video_url} className="w-full h-full object-cover" muted />
-                ) : video.description ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-purple-950/60 p-3">
-                    <p className="text-white/80 text-[10px] text-center line-clamp-3">{video.description}</p>
+      <div className="px-5 mb-5">
+        <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
+          Posts ({videos.length})
+        </h3>
+        {videos.length === 0 ? (
+          <p className="text-muted-foreground text-sm text-center py-6">No posts yet</p>
+        ) : (
+          <div className="space-y-2">
+            {videos.map((video) => (
+              <div key={video.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="p-3">
+                  <div className="flex items-start gap-3">
+                    {video.image_url ? (
+                      <img src={video.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
+                    ) : video.video_url ? (
+                      <div className="w-16 h-16 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                        <VideoIcon size={20} />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[10px]">
+                        Text
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-foreground text-sm truncate">{video.title || "Untitled"}</span>
+                        {video.category && (
+                          <Badge className={`text-[9px] border-0 ${video.type === "worker" ? "bg-orange-500/20 text-orange-300" : "bg-blue-500/20 text-blue-300"}`}>{video.category}</Badge>
+                        )}
+                      </div>
+                      {video.description && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{video.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {video.location && <span className="text-[10px] text-muted-foreground">📍 {video.location}</span>}
+                        {video.pay_rate && <span className="text-[10px] text-muted-foreground">💰 {video.pay_rate}</span>}
+                        <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Play size={24} className="text-muted-foreground" />
-                  </div>
-                )}
-                <div className="absolute bottom-1 left-1 right-1">
-                  <p className="text-white text-[10px] font-medium truncate drop-shadow">{video.title || video.description?.slice(0, 30)}</p>
                 </div>
-                <Badge
-                  className={`absolute top-1 left-1 text-[9px] border-0 py-0 px-1
-                    ${video.type === "worker" ? "bg-orange-500/80 text-white" : "bg-blue-500/80 text-white"}`}
-                >
-                  <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-3 h-3" />
-                </Badge>
               </div>
-            );
-            })}
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Reviews */}
       {reviews.length > 0 && (
