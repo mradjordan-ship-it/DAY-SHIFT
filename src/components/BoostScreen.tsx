@@ -42,12 +42,13 @@ const TIERS = [
 
 export default function BoostScreen() {
   const { user, token } = useAuth();
-  const { navigate } = useNav();
+  const { navigate, params: navParams } = useNav();
+  const preselectedVideoId = navParams?.videoId as number | undefined;
   const [subscription, setSubscription] = useState<AdvertiserSubscription | null>(null);
   const [boosts, setBoosts] = useState<PostBoost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTier, setSelectedTier] = useState<string | null>(null);
-  const [boostingPostId, setBoostingPostId] = useState<number | null>(null);
+  const [selectedTier, setSelectedTier] = useState<string | null>(preselectedVideoId ? "boost" : null);
+  const [boostingPostId, setBoostingPostId] = useState<number | null>(preselectedVideoId ?? null);
   const [error, setError] = useState("");
   const [checkingPayment, setCheckingPayment] = useState(false);
 
@@ -331,6 +332,7 @@ export default function BoostScreen() {
               onBoost={handleBoost}
               error={error}
               userId={user.id}
+              preselectedId={preselectedVideoId}
             />
           </div>
         )}
@@ -357,21 +359,30 @@ export default function BoostScreen() {
   );
 }
 
-function PostSelector({ token, tier, boostingPostId, onBoost, error, userId }: {
+function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, preselectedId }: {
   token: string;
   tier: string;
   boostingPostId: number | null;
   onBoost: (postId: number, tier: string) => void;
   error: string;
   userId: number;
+  preselectedId?: number | null;
 }) {
-  const [posts, setPosts] = useState<Array<{ id: number; title: string | null; thumbnail_url: string; type: string; category: string }>>([]);
+  const [posts, setPosts] = useState<Array<{ id: number; title: string | null; thumbnail_url: string; image_url: string | null; type: string; category: string }>>([]);
 
   useEffect(() => {
     fetch(`/api/videos?user_id=${userId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.ok ? r.json() : [])
-      .then(setPosts);
-  }, [token, userId]);
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : data.videos || [];
+        // If preselected, sort it to top
+        if (preselectedId) {
+          const idx = arr.findIndex((p: { id: number }) => p.id === preselectedId);
+          if (idx > 0) arr.unshift(arr.splice(idx, 1)[0]);
+        }
+        setPosts(arr);
+      });
+  }, [token, userId, preselectedId]);
 
   if (posts.length === 0) {
     return <p className="text-white/40 text-sm text-center py-4">No posts available to boost</p>;
@@ -380,9 +391,11 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId }: {
   return (
     <div className="space-y-2">
       {posts.slice(0, 10).map((post) => (
-        <div key={post.id} className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+        <div key={post.id} className={`border rounded-xl p-3 flex items-center gap-3 transition-all ${preselectedId === post.id ? "bg-primary/10 border-primary/40" : "bg-white/5 border-white/10"}`}>
           <div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
-            {post.thumbnail_url ? (
+            {post.image_url ? (
+              <img src={post.image_url} alt="" className="w-full h-full object-cover" />
+            ) : post.thumbnail_url ? (
               <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -400,7 +413,7 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId }: {
             disabled={boostingPostId === post.id}
             className="bg-primary text-primary-foreground text-xs ember-glow flex-shrink-0"
           >
-            {boostingPostId === post.id ? "..." : "Boost"}
+            {boostingPostId === post.id ? "..." : "Boost Now"}
           </Button>
         </div>
       ))}
