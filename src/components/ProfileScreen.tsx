@@ -375,7 +375,7 @@ export default function ProfileScreen() {
             {videos.map((video) => (
               <div key={video.id} className="relative aspect-square rounded-xl overflow-hidden bg-secondary group">
                 {video.image_url ? (
-                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
+                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-contain" />
                 ) : video.video_url ? (
                   <video
                     src={video.video_url}

@@ -811,8 +811,8 @@ function VideoCard({
           <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} style={{ opacity: playing ? 1 : 0, transition: 'opacity 0.3s' }} />
         </>
       ) : video.image_url ? (
-        /* Image only */
-        <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-cover" />
+        /* Image only — show full image without cropping */
+        <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-contain" />
       ) : video.video_url ? (
         /* Video only */
         <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} />

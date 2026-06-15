@@ -255,7 +255,7 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
             {videos.map((video) => (
               <div key={video.id} className="relative aspect-video bg-card rounded-xl overflow-hidden border border-border">
                 {video.image_url ? (
-                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
+                  <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-contain" />
                 ) : video.video_url ? (
                   <video src={video.video_url} className="w-full h-full object-cover" muted />
                 ) : video.description ? (
