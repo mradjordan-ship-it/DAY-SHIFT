@@ -904,20 +904,6 @@ function VideoCard({
               <Calendar size={12} /> Event{video.event_date ? ` · ${video.event_date}` : ""}{video.event_time ? ` ${video.event_time}` : ""}
             </Badge>
           )}
-          {(() => {
-            const age = (Date.now() - new Date(video.created_at).getTime()) / 1000;
-            if (age < 900) return (
-              <Badge className="font-bold border backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 border-lime-400/40 bg-lime-500/20 text-lime-300">
-                🔥 FRESH
-              </Badge>
-            );
-            if (age < 3600) return (
-              <Badge className="font-semibold border backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 border-yellow-400/30 bg-yellow-500/15 text-yellow-300">
-                ⚡ NEW
-              </Badge>
-            );
-            return null;
-          })()}
         </div>
       )}
       {isHorizontal && (
