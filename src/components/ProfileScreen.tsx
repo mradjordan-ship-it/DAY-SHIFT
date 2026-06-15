@@ -642,9 +642,7 @@ export default function ProfileScreen() {
                     {(user?.role === "worker" || user?.is_admin) && <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>}
                     <SelectItem value="sale"><SaleIcon className="w-3 h-3 inline mr-1" />For Sale</SelectItem>
                     <SelectItem value="event"><EventIcon className="w-3 h-3 inline mr-1" />Event</SelectItem>
-                    {(user?.role === "employer" || user?.is_admin) && (
-                      <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
-                    )}
+                    <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

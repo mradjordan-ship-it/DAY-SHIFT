@@ -616,9 +616,7 @@ export default function PostScreen() {
                     {(postType === "worker" || isAdmin) && <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>}
                     <SelectItem value="sale"><Tag size={12} className="inline mr-1" /> For Sale</SelectItem>
                     <SelectItem value="event"><Calendar size={12} className="inline mr-1" /> Event</SelectItem>
-                    {(postType === "employer" || isAdmin) && (
-                      <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
-                    )}
+                    <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
