@@ -109,7 +109,10 @@ def _extract_from_twitter(soup: BeautifulSoup) -> dict:
 
     tw_player = soup.find("meta", attrs={"name": "twitter:player"})
     if tw_player and tw_player.get("content"):
-        data.setdefault("video_url", tw_player["content"].strip())
+        url = tw_player["content"].strip()
+        # Only accept direct video URLs, not embed players
+        if any(url.lower().endswith(ext) for ext in (".mp4", ".webm", ".mov", ".m3u8")):
+            data.setdefault("video_url", url)
 
     return data
 
@@ -574,6 +577,13 @@ async def import_url(body: ImportURLRequest):
                         result["image_url"] = f"/api/media/{tmp_filename}"
         except Exception:
             pass  # Keep the external URL as fallback
+
+    # Filter out embed/player video URLs that can't be played as <video src>
+    if result.get("video_url"):
+        vurl = result["video_url"].lower()
+        # Reject embeds, iframes, players — only direct video files work
+        if any(kw in vurl for kw in ("/embed/", "player", "iframe", "youtube.com", "vimeo.com/player", "tiktok.com/embed")):
+            result.pop("video_url", None)
 
     result["source_domain"] = source_domain
 
