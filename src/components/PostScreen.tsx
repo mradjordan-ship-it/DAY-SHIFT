@@ -439,7 +439,7 @@ export default function PostScreen() {
                     <div className="w-full max-h-44 flex items-center justify-center overflow-hidden">
                       {imagePreview ? (
                         <div className="relative w-full h-full">
-                          <img src={imagePreview} alt="Preview" className="w-full h-full object-cover max-h-44" />
+                          <img src={imagePreview} alt="Preview" className="w-full h-full object-contain max-h-44" />
                           {!imageUploading && <button onClick={resetImage} className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full text-white hover:bg-black/70 transition-colors"><X size={16} /></button>}
                         </div>
                       ) : (
@@ -465,7 +465,7 @@ export default function PostScreen() {
                     <div className="w-full max-h-44 flex items-center justify-center overflow-hidden">
                       {videoPreviewAdmin ? (
                         <div className="relative w-full h-full">
-                          <video src={videoPreviewAdmin} controls className="w-full h-full object-cover max-h-44" />
+                          <video src={videoPreviewAdmin} controls className="w-full h-full object-contain max-h-44" />
                           {!videoUploading && <button onClick={resetVideo} className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full text-white hover:bg-black/70 transition-colors"><X size={16} /></button>}
                         </div>
                       ) : (
@@ -553,7 +553,7 @@ export default function PostScreen() {
             {recordedUrl && !showRecorder && (
               <div className="rounded-xl border border-border overflow-hidden">
                 <div className="relative">
-                  <video src={recordedUrl} controls className="w-full max-h-44 object-cover" />
+                  <video src={recordedUrl} controls className="w-full max-h-44 object-contain" />
                   <button
                     onClick={() => { setRecordedBlob(null); setRecordedUrl(""); setUploadedVideoUrl(""); }}
                     className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full text-white hover:bg-black/70 transition-colors"
