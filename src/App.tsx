@@ -425,12 +425,12 @@ export default function App() {
             <Suspense fallback={<ScreenLoader />}>
             {/* Landing page for non-logged-in users */}
             {!user && screen === "feed" && <LandingScreen />}
-            {user && screen === "feed" && <FeedScreen />}
+            {user && screen === "feed" && <FeedScreen key={user.id} />}
             {screen === "landing" && <LandingScreen />}
             {screen === "post" && <PostScreen key={user?.id} />}
-            {screen === "matches" && <MatchesScreen />}
+            {screen === "matches" && <MatchesScreen key={user?.id} />}
             {screen === "chat" && <ChatScreen matchId={params.matchId as number} />}
-            {screen === "profile" && <ProfileScreen />}
+            {screen === "profile" && <ProfileScreen key={user.id} />}
             {screen === "login" && <AuthScreen mode="login" />}
             {screen === "register" && <AuthScreen mode="register" />}
             {screen === "forgot" && <AuthScreen mode="forgot" />}

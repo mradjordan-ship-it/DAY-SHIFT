@@ -410,6 +410,13 @@ export default function ProfileScreen() {
                   <Trash2 size={12} className="text-white" />
                 </button>
 
+                <button
+                  onClick={() => navigate("boost", { videoId: video.id })}
+                  className="absolute top-9 right-1 z-10 w-7 h-7 bg-amber-500/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
+                >
+                  <Zap size={12} className="text-white" />
+                </button>
+
                 <div className="absolute bottom-1 left-1 right-1 pointer-events-none">
                   <p className="text-white text-[10px] font-medium truncate drop-shadow">{video.title || video.description?.slice(0, 30)}</p>
                 </div>
