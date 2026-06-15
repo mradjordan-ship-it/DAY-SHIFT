@@ -701,19 +701,6 @@ export default function ProfileScreen() {
               <p className="text-[10px] text-muted-foreground">Upload a new photo or video to replace the current one.</p>
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <input
-                type="checkbox"
-                id="repost"
-                checked={postForm.repost}
-                onChange={(e) => setPostForm({ ...postForm, repost: e.target.checked })}
-                className="w-4 h-4 rounded border-border bg-secondary text-primary"
-              />
-              <Label htmlFor="repost" className="text-sm font-medium text-foreground cursor-pointer">
-                Repost this to the top of the feed
-              </Label>
-            </div>
-
             <div className="flex gap-2 pt-4 pb-2">
               <Button
                 variant="outline"
