@@ -427,7 +427,7 @@ export default function App() {
             {!user && screen === "feed" && <LandingScreen />}
             {user && screen === "feed" && <FeedScreen />}
             {screen === "landing" && <LandingScreen />}
-            {screen === "post" && <PostScreen />}
+            {screen === "post" && <PostScreen key={user?.id} />}
             {screen === "matches" && <MatchesScreen />}
             {screen === "chat" && <ChatScreen matchId={params.matchId as number} />}
             {screen === "profile" && <ProfileScreen />}
