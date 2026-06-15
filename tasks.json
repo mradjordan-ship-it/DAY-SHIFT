@@ -7,11 +7,11 @@
   {
     "content": "Add image preview, description, edit button + dialog to AdminScreen VideosTab",
     "id": "2",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Test admin post management",
     "id": "3",
-    "status": "pending"
+    "status": "completed"
   }
 ]

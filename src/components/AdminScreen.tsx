@@ -882,7 +882,7 @@ function ScheduledTab({ posts }: { posts: ScheduledPost[] }) {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                by {p.user_name} ({p.user_role === "worker" ? "Crew" : "Kitchen"})
+                by {p.user_name} ({p.user_role === "admin" ? "Admin" : p.user_role === "worker" ? "Crew" : "Kitchen"})
               </p>
               <p className="text-[11px] text-muted-foreground truncate mt-0.5">{p.description}</p>
               <div className="flex items-center gap-1 mt-1.5">
