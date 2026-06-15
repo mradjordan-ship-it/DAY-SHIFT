@@ -88,7 +88,7 @@ export default function BoostScreen() {
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
-    const fetch = async () => {
+    const loadData = async () => {
       try {
         const [subRes, boostRes] = await Promise.all([
           fetch("/api/advertiser/subscription", { headers: { Authorization: `Bearer ${token}` } }),
@@ -100,7 +100,7 @@ export default function BoostScreen() {
         setLoading(false);
       }
     };
-    fetch();
+    loadData();
   }, [token]);
 
   const handleBoost = async (postId: number, tier: string) => {
