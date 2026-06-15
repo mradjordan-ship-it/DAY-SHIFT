@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff
+  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff, Video as VideoIcon
 } from "lucide-react";
 import { RoleIcon, CategoryIcon, SaleIcon, EventIcon } from "./Icons";
 import { cn } from "@/lib/utils";
@@ -368,7 +368,7 @@ export default function ProfileScreen() {
         )}
       </div>
 
-      {/* Videos grid */}
+      {/* Videos list — same style as admin */}
       <div className="px-5 mb-5">
         <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
           My Posts ({videos.length})
@@ -384,64 +384,57 @@ export default function ProfileScreen() {
             </button>
           </div>
         ) : (
-        <div className="grid grid-cols-3 gap-1.5">
-          {videos.map((video) => {
-            const ar = video.aspect_ratio || "9:16";
-            const cardAspect = ar === "9:16" ? "3/4" : ar === "4:5" ? "4/5" : ar === "1:1" ? "1/1" : ar === "16:9" ? "16/9" : "3/4";
-            return (
-            <div key={video.id} className="relative rounded-xl overflow-hidden bg-secondary group" style={{ aspectRatio: cardAspect }}>
-              {video.image_url ? (
-                <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
-              ) : video.video_url ? (
-                <video
-                  src={video.video_url}
-                  className="w-full h-full object-cover"
-                  muted
-                  playsInline
-                />
-              ) : video.description ? (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-purple-950/60 p-2">
-                  <p className="text-white/80 text-[9px] text-center line-clamp-4">{video.description}</p>
+          <div className="space-y-2">
+            {videos.map((video) => (
+              <div key={video.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="p-3">
+                  <div className="flex items-start gap-3">
+                    {/* Thumbnail */}
+                    {video.image_url ? (
+                      <img src={video.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
+                    ) : video.video_url ? (
+                      <div className="w-16 h-16 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                        <VideoIcon size={20} />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[10px]">
+                        Text
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground text-sm truncate">{video.title || "Untitled"}</span>
+                        {video.category && (
+                          <Badge className="text-[9px] border-0 bg-muted text-muted-foreground">{video.category}</Badge>
+                        )}
+                      </div>
+                      {video.description && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{video.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {video.location && <span className="text-[10px] text-muted-foreground">📍 {video.location}</span>}
+                        {video.pay_rate && <span className="text-[10px] text-muted-foreground">💰 {video.pay_rate}</span>}
+                        <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                    <Button size="sm" variant="outline" onClick={() => openEditPost(video)} className="text-xs flex-shrink-0">
+                      <Pencil size={12} className="mr-1" /> Edit
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDeleteVideo(video.id)} className="text-xs text-destructive border-destructive/40 hover:bg-destructive/10 flex-shrink-0">
+                      <Trash2 size={12} />
+                    </Button>
+                    <div className="flex-1" />
+                    <Button size="sm" onClick={() => navigate("boost", { videoId: video.id })} className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0">
+                      <Zap size={12} className="mr-1" /> Boost
+                    </Button>
+                  </div>
                 </div>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-8 h-8 text-muted-foreground" />
-                </div>
-              )}
-              
-              <button
-                onClick={() => openEditPost(video)}
-                className="absolute top-1 right-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
-              >
-                <Pencil size={12} className="text-white" />
-              </button>
-
-              <button
-                onClick={() => handleDeleteVideo(video.id)}
-                className="absolute top-1 left-1 z-10 w-7 h-7 bg-black/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
-              >
-                <Trash2 size={12} className="text-white" />
-              </button>
-
-              <button
-                onClick={() => navigate("boost", { videoId: video.id })}
-                className="absolute top-9 right-1 z-10 w-7 h-7 bg-amber-500/60 backdrop-blur rounded-full flex items-center justify-center active:scale-95 transition-transform"
-              >
-                <Zap size={12} className="text-white" />
-              </button>
-
-              <div className="absolute bottom-1 left-1 right-1 pointer-events-none">
-                <p className="text-white text-[10px] font-medium truncate drop-shadow">{video.title || video.description?.slice(0, 30)}</p>
               </div>
-              <Badge
-                  className={`absolute top-9 left-1 text-[9px] border-0 py-0 px-1 pointer-events-none ${video.type === "worker" ? "bg-orange-500/80 text-white" : "bg-blue-500/80 text-white"}`}
-                >
-                  <RoleIcon role={video.type === "worker" ? "worker" : "employer"} className="w-3 h-3" />
-                </Badge>
-            </div>
-          );
-          })}
-        </div>
+            ))}
+          </div>
         )}
       </div>
 
