@@ -1,32 +1,27 @@
 [
   {
-    "content": "Backend: Add embed_url column to videos table + update POST/PATCH /api/videos",
+    "content": "Fix: admin posts always showing as sponsored — change to only show sponsored when category=sponsored",
     "id": "1",
     "status": "completed"
   },
   {
-    "content": "Backend: Add embed URL conversion helper (YouTube, Vimeo, TikTok, Facebook)",
+    "content": "Fix: add 'Sponsored' option to profile edit dialog category dropdown + fix category change for posts currently in 'sponsored'",
     "id": "2",
     "status": "completed"
   },
   {
-    "content": "Backend: Update import-url endpoint to return embed_url for video platforms",
+    "content": "Remove: strip all embed_url code (backend + frontend)",
     "id": "3",
     "status": "completed"
   },
   {
-    "content": "Frontend: Add 'Embed Video' input field in PostScreen",
+    "content": "Improve: make Import from URL the best it can be",
     "id": "4",
     "status": "completed"
   },
   {
-    "content": "Frontend: Render iframe embeds in FeedScreen + profile screens when embed_url present",
+    "content": "Test: build and verify all changes",
     "id": "5",
-    "status": "completed"
-  },
-  {
-    "content": "Test: Build and verify end-to-end",
-    "id": "6",
     "status": "in_progress"
   }
 ]

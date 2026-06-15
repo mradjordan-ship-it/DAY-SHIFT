@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff, VideoIcon
+  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff
 } from "lucide-react";
 import { RoleIcon, CategoryIcon, SaleIcon, EventIcon } from "./Icons";
 import { cn } from "@/lib/utils";
@@ -383,13 +383,6 @@ export default function ProfileScreen() {
                     muted
                     playsInline
                   />
-                ) : video.embed_url ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/40 to-red-950/60">
-                    <div className="text-center">
-                      <VideoIcon className="w-6 h-6 text-red-400 mx-auto mb-1" />
-                      <p className="text-white/70 text-[9px]">Embedded Video</p>
-                    </div>
-                  </div>
                 ) : video.description ? (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-purple-950/60 p-2">
                     <p className="text-white/80 text-[9px] text-center line-clamp-4">{video.description}</p>
@@ -627,6 +620,7 @@ export default function ProfileScreen() {
                     <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>
                     <SelectItem value="sale"><SaleIcon className="w-3 h-3 inline mr-1" />For Sale</SelectItem>
                     <SelectItem value="event"><EventIcon className="w-3 h-3 inline mr-1" />Event</SelectItem>
+                    <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

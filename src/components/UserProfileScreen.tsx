@@ -258,13 +258,6 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
                   <img src={video.image_url} alt={video.title || ""} className="w-full h-full object-cover" />
                 ) : video.video_url ? (
                   <video src={video.video_url} className="w-full h-full object-cover" muted />
-                ) : video.embed_url ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/40 to-red-950/60">
-                    <div className="text-center">
-                      <Play size={20} className="text-red-400 mx-auto mb-1" />
-                      <p className="text-white/70 text-[9px]">Embedded Video</p>
-                    </div>
-                  </div>
                 ) : video.description ? (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-purple-950/60 p-3">
                     <p className="text-white/80 text-[10px] text-center line-clamp-3">{video.description}</p>

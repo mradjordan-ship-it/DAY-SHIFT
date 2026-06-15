@@ -12,7 +12,6 @@ from .deps import (
     transcode_video, MAX_VIDEO_BYTES, MAX_IMAGE_BYTES,
 )
 from .external_data import fetch_bls_wages, fetch_rss_news
-from .embed_utils import to_embed_url, get_platform_name
 
 
 def _extract_media(media_row: dict) -> str:
@@ -299,7 +298,6 @@ def create_video(
     hours: str = Form(""),
     experience_level: str = Form(""),
     location: str = Form(""),
-    embed_url: str = Form(""),
     current_user=Depends(get_current_user),
 ):
     # Validate: must have at least some content
@@ -316,9 +314,9 @@ def create_video(
     cur = conn.cursor()
     try:
         cur.execute(
-            """INSERT INTO videos (user_id, video_url, image_url, type, post_type, category, price, event_date, event_time, scheduled_at, aspect_ratio, title, description, cuisine_type, pay_rate, hours, experience_level, location, embed_url)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
-            (current_user["id"], video_url or None, image_url or None, type, post_type, category, price, event_date, event_time, scheduled_at or None, aspect_ratio, title or None, description, cuisine_type, pay_rate, hours, experience_level, location, embed_url or None),
+            """INSERT INTO videos (user_id, video_url, image_url, type, post_type, category, price, event_date, event_time, scheduled_at, aspect_ratio, title, description, cuisine_type, pay_rate, hours, experience_level, location)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+            (current_user["id"], video_url or None, image_url or None, type, post_type, category, price, event_date, event_time, scheduled_at or None, aspect_ratio, title or None, description, cuisine_type, pay_rate, hours, experience_level, location),
         )
         video = dict(cur.fetchone())
 
@@ -414,7 +412,6 @@ async def update_video(
     event_date: str = Form(None),
     event_time: str = Form(None),
     aspect_ratio: str = Form(None),
-    embed_url: str = Form(None),
     file: UploadFile = File(None),
     current_user=Depends(get_current_user),
 ):
@@ -486,9 +483,6 @@ async def update_video(
         if aspect_ratio is not None and aspect_ratio in ("9:16", "1:1", "4:5", "16:9"):
             updates.append("aspect_ratio = %s")
             params.append(aspect_ratio)
-        if embed_url is not None:
-            updates.append("embed_url = %s")
-            params.append(embed_url or None)
             
         if str(repost).lower() == "true":
             updates.append("created_at = CURRENT_TIMESTAMP")
@@ -530,20 +524,3 @@ def delete_video(video_id: int, current_user=Depends(get_current_user)):
     cur.close()
     conn.close()
     return {"deleted": True}
-
-
-@api.post("/embed-url")
-def convert_embed_url(body: dict):
-    """Convert a video platform URL to its embed URL.
-
-    Accepts: {"url": "https://youtube.com/watch?v=xxx"}
-    Returns: {"embed_url": "https://youtube.com/embed/xxx", "platform": "YouTube"}
-    """
-    url = body.get("url", "").strip()
-    if not url:
-        raise HTTPException(400, "URL is required")
-    embed = to_embed_url(url)
-    platform = get_platform_name(url)
-    if not embed:
-        return {"embed_url": "", "platform": platform or "Unsupported", "supported": False}
-    return {"embed_url": embed, "platform": platform, "supported": True}

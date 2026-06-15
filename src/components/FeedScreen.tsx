@@ -766,7 +766,7 @@ function VideoCard({
   const ar = video.aspect_ratio || "9:16";
   const isDefault = ar === "9:16";
 
-  const sponsored = video.author_is_admin || video.author_is_advertiser;
+  const sponsored = video.category === "sponsored";
 
   return (
     <div
@@ -816,18 +816,6 @@ function VideoCard({
       ) : video.video_url ? (
         /* Video only */
         <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} />
-      ) : video.embed_url ? (
-        /* Embedded video (YouTube, Vimeo, TikTok, Facebook) */
-        <div className="absolute inset-0 w-full h-full">
-          <iframe
-            src={video.embed_url}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            title={video.title || "Embedded video"}
-            loading="lazy"
-          />
-        </div>
       ) : video.description ? (
         /* Text only — no media */
         <div
@@ -885,12 +873,12 @@ function VideoCard({
       {/* Type badges — top left */}
       {!isHorizontal && (
         <div className="absolute z-10 top-3 md:top-4 left-3 md:left-4 flex gap-1.5 md:gap-2 flex-wrap pointer-events-auto">
-          {(video.is_sponsored || video.category === "sponsored" || video.author_is_admin) && (
+          {(video.is_sponsored || video.category === "sponsored") && (
             <Badge className="font-bold border backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 border-amber-400/40 bg-amber-500/20 text-amber-300">
               ✦ Sponsored
             </Badge>
           )}
-          {!video.author_is_admin && video.category !== "sponsored" && (
+          {video.category !== "sponsored" && (
             <Badge
               className={cn("font-semibold border-0 backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 flex items-center gap-1",
                 video.type === "worker"
@@ -933,12 +921,12 @@ function VideoCard({
       )}
       {isHorizontal && (
         <div className="absolute z-10 top-1.5 left-1.5 flex flex-col gap-1 pointer-events-auto">
-          {(video.is_sponsored || video.category === "sponsored" || video.author_is_admin) && (
+          {(video.is_sponsored || video.category === "sponsored") && (
             <Badge className="font-bold border backdrop-blur text-[8px] px-1.5 py-0 border-amber-400/25 bg-amber-500/10 text-amber-300">
               ✦ Sponsored
             </Badge>
           )}
-          {!video.author_is_admin && video.category !== "sponsored" && (
+          {video.category !== "sponsored" && (
             <Badge
               className={cn("font-semibold border-0 backdrop-blur text-[8px] px-1.5 py-0 flex items-center gap-0.5",
                 video.type === "worker"
@@ -1326,14 +1314,6 @@ function VideoCard({
                   if (fsPlaying) { vid.pause(); setFsPlaying(false); }
                   else { vid.play().catch(() => {}); setFsPlaying(true); }
                 }}
-              />
-            ) : video.embed_url ? (
-              <iframe
-                src={video.embed_url}
-                className="w-full max-w-2xl aspect-video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={video.title || "Embedded video"}
               />
             ) : video.image_url ? (
               <img src={video.image_url} alt={video.title || ""} className="max-w-full max-h-full object-contain" />
