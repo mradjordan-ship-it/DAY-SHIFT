@@ -187,7 +187,6 @@ export default function BoostScreen() {
 
   // Main advertiser view
   const unpaidBoosts = boosts.filter((b) => b.status === "pending" && b.payment_status !== "paid");
-  const awaitingApproval = boosts.filter((b) => b.status === "pending" && b.payment_status === "paid");
   const activeBoosts = boosts.filter((b) => b.status === "active");
 
   return (
@@ -225,22 +224,6 @@ export default function BoostScreen() {
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {/* Awaiting admin approval */}
-        {awaitingApproval.length > 0 && (
-          <div className="mb-4 space-y-2">
-            <p className="text-white/50 text-xs font-semibold uppercase tracking-wider">Pending Approval</p>
-            {awaitingApproval.map((b) => (
-              <div key={b.id} className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 flex items-center gap-3">
-                <Clock size={16} className="text-blue-400 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-white text-sm font-semibold">{TIERS.find((t) => t.key === b.tier)?.name} — {b.video_title || "Post"}</p>
-                  <p className="text-white/50 text-xs">Payment sent, waiting for admin approval</p>
-                </div>
-              </div>
-            ))}
           </div>
         )}
 

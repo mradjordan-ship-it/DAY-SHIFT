@@ -128,7 +128,7 @@ def create_boost(body: BoostBody, request: Request, current_user=Depends(get_cur
                     "currency": "usd",
                     "product_data": {
                         "name": f"{tier_info['name']} Boost — {vid['title'] or 'Your Post'}",
-                        "description": f"{tier_info['duration']} visibility boost on Day Shift",
+                        "description": f"{tier_info['duration_days']}-day visibility boost on Day Shift",
                     },
                     "unit_amount": tier_info["price"] * 100,  # Stripe uses cents
                 },
@@ -145,9 +145,13 @@ def create_boost(body: BoostBody, request: Request, current_user=Depends(get_cur
             },
         )
     except Exception as e:
+        print(f"[Stripe] checkout.session.create failed: {e}")
+        # Clean up the pending boost record since payment failed
+        cur.execute("DELETE FROM post_boosts WHERE id = %s", (boost["id"],))
+        conn.commit()
         cur.close()
         conn.close()
-        raise HTTPException(500, "Payment processing failed. Please try again.")
+        raise HTTPException(500, f"Payment processing failed: {str(e)[:200]}")
 
     # Store Stripe session ID
     cur.execute(
