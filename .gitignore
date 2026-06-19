@@ -12,3 +12,14 @@ __pycache__/
 plans/
 # VAPID keys (secrets)
 vapid_keys/
+# User uploads (runtime data, not source)
+uploads/
+# Marketing assets (not part of published app)
+*.mp4
+day-shift-phone-mockup.png
+day-shift-lower-third.png
+sizzle-reel.html
+create_lower_third.py
+create_mockup.py
+record_sizzle.py
+take_screenshots.py
