@@ -524,7 +524,7 @@ export default function ProfileScreen() {
                   onClick={() => avatarRef.current?.click()}
                   className="text-xs text-primary hover:underline text-left"
                 >
-                  {avatarPreview ? "Change photo" : ""}
+                  {avatarPreview ? "Change photo" : "Upload photo"}
                 </button>
                 {avatarPreview && (
                   <button
@@ -597,11 +597,11 @@ export default function ProfileScreen() {
             </div>
           </div>
 
-          {/* Delete account — always visible outside scroll area */}
-          <div className="pt-2 border-t border-border mt-2 sticky bottom-0 bg-card">
+          {/* Delete account */}
+          <div className="pt-3 border-t border-border mt-1">
             <button
               onClick={() => { setEditOpen(false); setConfirmText(""); setDeleteOpen(true); }}
-              className="w-full text-xs text-destructive/60 hover:text-destructive transition-colors text-center py-1"
+              className="w-full text-xs text-destructive/60 hover:text-destructive transition-colors text-center py-2"
             >
               Delete account
             </button>
