@@ -417,28 +417,20 @@ export default function FeedScreen() {
               // Build a flat list of feed items: posts, tickers, and carousels interleaved
               const items: { type: "post"; video: Video; idx: number } | { type: "ticker"; idx: number } | { type: "carousel"; carouselIdx: number; idx: number }[] = [];
               let carouselCounter = 0;
-              // Random seed based on video IDs so it stays stable across re-renders
-              const seed = videos.length > 0 ? videos[0].id : 1;
               
               videos.forEach((video, idx) => {
                 items.push({ type: "post", video, idx });
                 
-                // Inject carousel after 2nd post, then randomly every 4-7 posts
-                if (idx === 1) {
+                // Inject carousel after 3rd post, then every 8 posts
+                if (idx === 2 || (idx > 2 && (idx - 2) % 8 === 0)) {
                   if (injectedCarousels[0]?.length > 0) {
                     items.push({ type: "carousel", carouselIdx: 0, idx });
                     carouselCounter++;
                   }
-                } else if (idx > 1 && (idx + seed) % (4 + (idx % 4)) === 0) {
-                  const ci = carouselCounter % injectedCarousels.length;
-                  if (injectedCarousels[ci]?.length > 0) {
-                    items.push({ type: "carousel", carouselIdx: ci, idx });
-                    carouselCounter++;
-                  }
                 }
                 
-                // Ticker every N posts
-                const shouldShowTicker = (idx + 1) % tickerFrequency === 0;
+                // Ticker every 6 posts
+                const shouldShowTicker = (idx + 1) % 6 === 0;
                 if (shouldShowTicker) {
                   items.push({ type: "ticker", idx });
                 }
