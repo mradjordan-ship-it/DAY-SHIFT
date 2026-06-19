@@ -42,7 +42,7 @@ def get_ticker_quotes():
         {"text": "Cooking is an art, but all art requires knowing something about the technique and materials.", "author": "Nina Simone", "photo": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Nina_Simone14.JPG"},
         {"text": "Food is our common ground, a universal experience. Our stories live in the food we make.", "author": "Carla Hall", "photo": "https://upload.wikimedia.org/wikipedia/commons/4/45/Carla_Hall_Oct_09.JPG"},
         {"text": "I've been cooking since I was tall enough to reach the stove. The kitchen is where I found my voice.", "author": "Mashama Bailey", "photo": "https://upload.wikimedia.org/wikipedia/commons/8/8f/The_Grey%2C_Savannah_GA.jpg"},
-        {"text": "When you know who you are and where you come from, your food tells that story.", "author": "Jerome Grant", "photo": "https://upload.wikimedia.org/wikipedia/commons/6/6b/Marcus_Samuelsson_2022.jpg"},
+        {"text": "When you know who you are and where you come from, your food tells that story.", "author": "Jerome Grant", "photo": ""},
         {"text": "Every dish I create honors the hands that taught me — my grandmother, my mother, my community.", "author": "Kwame Onwuachi", "photo": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Kwame_Onwuachi_5183194.jpg"},
         {"text": "The table is a meeting place, a place of nourishment and story and song.", "author": "Michael Twitty", "photo": "https://upload.wikimedia.org/wikipedia/commons/2/27/Michael_Twitty.jpg"},
         {"text": "I cook to preserve the legacy of those who came before me. Every recipe is a memory.", "author": "Briana Riddock", "photo": "https://cdn.apartmenttherapy.info/image/upload/f_auto,q_auto:eco,c_fill,g_auto,w_1500,ar_3:2/k%2FEdit%2F2019-08-Author-Profile-Photos%2Fbrianariddock"},
@@ -255,8 +255,14 @@ def list_videos(
         sponsored_ids = {s["id"] for s in sponsored}
         boosted_ids = {b["id"] for b in boosted}
         videos = [v for v in videos if v["id"] not in sponsored_ids and v["id"] not in boosted_ids]
-        # Merge: sponsored first, then boosted, then regular
-        videos = sponsored + boosted + videos
+        # Normalize created_at to ISO strings for all posts before sorting
+        for p in videos:
+            if p.get("created_at") and not isinstance(p.get("created_at"), str):
+                p["created_at"] = p["created_at"].isoformat()
+        # Merge all posts and sort by created_at DESC so newest always appears first
+        all_posts = sponsored + boosted + videos
+        all_posts.sort(key=lambda p: p.get("created_at") or "", reverse=True)
+        videos = all_posts
 
     for v in videos:
         v["liked_by_me"] = v["id"] in liked_ids

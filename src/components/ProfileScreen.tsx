@@ -607,6 +607,7 @@ export default function ProfileScreen() {
             </button>
           </div>
         </DialogContent>
+      </Dialog>
       {/* ── Edit Post Dialog ──────────────────────────────────────────── */}
       <Dialog open={postEditOpen} onOpenChange={setPostEditOpen}>
         <DialogContent className="bg-card border-border max-w-sm mx-auto rounded-2xl max-h-[85vh] overflow-y-auto">
@@ -742,8 +743,6 @@ export default function ProfileScreen() {
             </button>
           </div>
         </DialogContent>
-      </Dialog>
-
       </Dialog>
 
       {/* ── Delete Account Confirmation Dialog ─────────────────────────── */}
