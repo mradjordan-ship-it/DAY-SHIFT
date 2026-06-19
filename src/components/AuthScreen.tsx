@@ -47,6 +47,38 @@ export default function AuthScreen({
   const [legalDialog, setLegalDialog] = useState<"terms" | "privacy" | null>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const recaptchaSiteKey = (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string) || "";
+
+  // Promo code
+  const [promoCode, setPromoCode] = useState("");
+  const [promoStatus, setPromoStatus] = useState<"" | "valid" | "invalid" | "checking">("");
+  const [promoInfo, setPromoInfo] = useState<{ boost_tier?: string; boost_days?: number; source?: string } | null>(null);
+
+  // Check promo code as user types (debounced)
+  useEffect(() => {
+    if (!promoCode.trim() || promoCode.trim().length < 4) {
+      setPromoStatus("");
+      setPromoInfo(null);
+      return;
+    }
+    setPromoStatus("checking");
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/promo/validate/${encodeURIComponent(promoCode.trim())}`);
+        const data = await res.json();
+        if (data.valid) {
+          setPromoStatus("valid");
+          setPromoInfo({ boost_tier: data.boost_tier, boost_days: data.boost_days, source: data.source });
+        } else {
+          setPromoStatus("invalid");
+          setPromoInfo(null);
+        }
+      } catch {
+        setPromoStatus("");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [promoCode]);
 
   // ── Email verification: auto-verify on mount ──
   const [verifyState, setVerifyState] = useState<"verifying" | "success" | "error">("verifying");
@@ -81,10 +113,10 @@ export default function AuthScreen({
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const isWorker = form.role === "worker";
-  const imageLabel = isWorker ? "Profile Photo" : "Company Logo or Profile Photo";
+  const imageLabel = isWorker ? "Profile Photo" : "Profile Photo";
   const imageHint = isWorker
     ? "A clear photo of your face — helps spots recognize you"
-    : "Your restaurant logo or a clear photo of your face — builds trust with crew";
+    : "A clear photo of your face — builds trust with crew";
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -164,6 +196,7 @@ export default function AuthScreen({
       fd.append("image", imageFile);
       fd.append("terms_accepted", String(termsAccepted));
       fd.append("privacy_accepted", String(privacyAccepted));
+      if (promoCode.trim()) fd.append("promo_code", promoCode.trim());
       if (recaptchaToken) fd.append("recaptcha_token", recaptchaToken);
 
       const res = await fetch("/api/auth/register", { method: "POST", body: fd });
@@ -300,7 +333,7 @@ export default function AuthScreen({
               Built for Culinarians That Move Fast
             </p>
             <p className="text-muted-foreground text-xs text-center px-4 mt-1">
-              Match with your next shift — workers and kitchens, one feed.
+              Match with your next shift — workers and kitchens, one feed today!
             </p>
           </div>
 
@@ -622,12 +655,12 @@ export default function AuthScreen({
           </div>
         )}
 
-        {/* reCAPTCHA for registration */}
-        {mode === "register" && (
+        {/* reCAPTCHA for registration — only shown if a valid site key is configured */}
+        {mode === "register" && recaptchaSiteKey && (
           <div className="flex justify-center">
             <ReCAPTCHA
               ref={recaptchaRef}
-              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY as string || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+              sitekey={recaptchaSiteKey}
               onChange={(token) => setRecaptchaToken(token)}
               onExpired={() => setRecaptchaToken(null)}
               theme="dark"
@@ -639,6 +672,33 @@ export default function AuthScreen({
         {error && (
           <div className="text-destructive text-sm text-center bg-destructive/10 rounded-lg py-2 px-3">
             {error}
+          </div>
+        )}
+
+        {mode === "register" && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="promo">Promo Code <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Input
+              id="promo"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              placeholder="Enter promo code"
+              className="bg-secondary border-border uppercase tracking-wider"
+            />
+            {promoStatus === "valid" && promoInfo && (
+              <p className="text-xs text-primary font-medium">
+                ✓ {promoInfo.boost_tier && promoInfo.boost_days
+                  ? `Free ${promoInfo.boost_tier} boost for ${promoInfo.boost_days} days!`
+                  : "Promo code applied!"}
+                {promoInfo.source ? ` From ${promoInfo.source}.` : ""}
+              </p>
+            )}
+            {promoStatus === "invalid" && (
+              <p className="text-xs text-muted-foreground">Invalid code</p>
+            )}
+            {promoStatus === "checking" && (
+              <p className="text-xs text-muted-foreground">Checking...</p>
+            )}
           </div>
         )}
 

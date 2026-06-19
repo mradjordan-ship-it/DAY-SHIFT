@@ -50,6 +50,8 @@ export default function BoostScreen() {
   const [boostingPostId, setBoostingPostId] = useState<number | null>(preselectedVideoId ?? null);
   const [error, setError] = useState("");
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [promoRedemption, setPromoRedemption] = useState<{ code: string; boost_tier: string; boost_days: number; source: string; boost_used: boolean } | null>(null);
+  const [freeBoostLoading, setFreeBoostLoading] = useState(false);
 
   // Check for Stripe redirect success
   useEffect(() => {
@@ -91,6 +93,14 @@ export default function BoostScreen() {
       try {
         const boostRes = await fetch("/api/advertiser/boosts", { headers: { Authorization: `Bearer ${token}` } });
         if (boostRes.ok) setBoosts(await boostRes.json());
+        // Check for promo redemption
+        const promoRes = await fetch("/api/promo/my-redemption", { headers: { Authorization: `Bearer ${token}` } });
+        if (promoRes.ok) {
+          const promoData = await promoRes.json();
+          if (promoData.redeemed && !promoData.boost_used && promoData.boost_tier) {
+            setPromoRedemption(promoData);
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -129,6 +139,30 @@ export default function BoostScreen() {
       headers: { Authorization: `Bearer ${token}` },
     });
     setBoosts((prev) => prev.filter((b) => b.id !== boostId));
+  };
+
+  const handleFreeBoost = async (postId: number) => {
+    if (!token) return;
+    setFreeBoostLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/advertiser/free-boost/${postId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        trackEvent("free_promo_boost", { video_id: postId, source: promoRedemption?.source });
+        setPromoRedemption(null);
+        // Refresh boosts
+        const boostRes = await fetch("/api/advertiser/boosts", { headers: { Authorization: `Bearer ${token}` } });
+        if (boostRes.ok) setBoosts(await boostRes.json());
+      } else {
+        setError(data.detail || "Failed to apply free boost");
+      }
+    } finally {
+      setFreeBoostLoading(false);
+    }
   };
 
   // Not logged in — show public tiers
@@ -243,6 +277,20 @@ export default function BoostScreen() {
           </div>
         )}
 
+        {/* Free promo boost banner */}
+        {promoRedemption && (
+          <div className="mb-4 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap size={16} className="text-amber-400" />
+              <span className="text-white font-bold text-sm">Free {promoRedemption.boost_tier} Boost Available!</span>
+            </div>
+            <p className="text-white/60 text-xs mb-3">
+              You have a free {promoRedemption.boost_tier} boost ({promoRedemption.boost_days} days) from promo code "{promoRedemption.code}"
+              {promoRedemption.source ? ` via ${promoRedemption.source}` : ""}. Select a post below to apply it — no payment needed.
+            </p>
+          </div>
+        )}
+
         {/* Tier selection */}
         <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-3">Choose a Boost Tier</p>
         <div className="space-y-3">
@@ -285,6 +333,9 @@ export default function BoostScreen() {
               error={error}
               userId={user.id}
               preselectedId={preselectedVideoId}
+              promoRedemption={promoRedemption}
+              onFreeBoost={handleFreeBoost}
+              freeBoostLoading={freeBoostLoading}
             />
           </div>
         )}
@@ -311,7 +362,7 @@ export default function BoostScreen() {
   );
 }
 
-function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, preselectedId }: {
+function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, preselectedId, promoRedemption, onFreeBoost, freeBoostLoading }: {
   token: string;
   tier: string;
   boostingPostId: number | null;
@@ -319,6 +370,9 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, pre
   error: string;
   userId: number;
   preselectedId?: number | null;
+  promoRedemption: { code: string; boost_tier: string; boost_days: number; source: string; boost_used: boolean } | null;
+  onFreeBoost: (postId: number) => void;
+  freeBoostLoading: boolean;
 }) {
   const [posts, setPosts] = useState<Array<{ id: number; title: string | null; thumbnail_url: string; image_url: string | null; type: string; category: string }>>([]);
 
@@ -359,14 +413,26 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, pre
             <p className="text-white text-sm font-semibold truncate">{post.title || "Untitled Post"}</p>
             <p className="text-white/40 text-[10px]">{post.type === "worker" ? "Crew" : "Kitchen"} · {post.category}</p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => onBoost(post.id, tier)}
-            disabled={boostingPostId === post.id}
-            className="bg-primary text-primary-foreground text-xs ember-glow flex-shrink-0"
-          >
-            {boostingPostId === post.id ? "..." : "Boost Now"}
-          </Button>
+          <div className="flex flex-col gap-1.5">
+            <Button
+              size="sm"
+              onClick={() => onBoost(post.id, tier)}
+              disabled={boostingPostId === post.id}
+              className="bg-primary text-primary-foreground text-xs ember-glow"
+            >
+              {boostingPostId === post.id ? "..." : `Boost $${TIERS.find((t) => t.key === tier)?.price ?? ""}`}
+            </Button>
+            {promoRedemption && (
+              <Button
+                size="sm"
+                onClick={() => onFreeBoost(post.id)}
+                disabled={freeBoostLoading}
+                className="bg-amber-500 text-black text-xs font-bold hover:bg-amber-400"
+              >
+                {freeBoostLoading ? "..." : "Use Free Boost"}
+              </Button>
+            )}
+          </div>
         </div>
       ))}
       {error && <p className="text-red-400 text-xs text-center">{error}</p>}

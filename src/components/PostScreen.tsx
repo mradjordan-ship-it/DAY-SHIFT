@@ -43,7 +43,7 @@ export default function PostScreen() {
   const [videoProgress, setVideoProgress] = useState(0);
   const [imageError, setImageError] = useState("");
   const [videoError, setVideoError] = useState("");
-  const [aspectRatio, setAspectRatio] = useState<"9:16" | "1:1" | "4:5" | "16:9">("9:16");
+  const [aspectRatio, setAspectRatio] = useState<"9:16" | "1:1" | "4:5" | "16:9">("16:9");
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -221,9 +221,22 @@ export default function PostScreen() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImageError("");
-    setImagePreview(URL.createObjectURL(file));
+    const objUrl = URL.createObjectURL(file);
+    setImagePreview(objUrl);
     setImageUploading(true);
     setImageProgress(0);
+
+    // Auto-detect aspect ratio from image dimensions
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.width / img.height;
+      if (ratio < 0.7) setAspectRatio("9:16");
+      else if (ratio < 0.85) setAspectRatio("4:5");
+      else if (ratio < 1.15) setAspectRatio("1:1");
+      else setAspectRatio("16:9");
+    };
+    img.src = objUrl;
+
     try {
       const data = await uploadWithProgress(file, "/api/upload/image", setImageProgress);
       setUploadedImageUrl(data.url);
@@ -239,6 +252,24 @@ export default function PostScreen() {
     const file = e.target.files?.[0];
     if (!file) return;
     setVideoError("");
+
+    // Client-side duration check — reject videos over 60 seconds before uploading
+    try {
+      const dur = await new Promise<number>((resolve, reject) => {
+        const v = document.createElement("video");
+        v.preload = "metadata";
+        v.onloadedmetadata = () => resolve(v.duration);
+        v.onerror = () => reject(new Error("Could not read video file"));
+        v.src = URL.createObjectURL(file);
+      });
+      if (dur > 60) {
+        setVideoError(`Video exceeds 60-second limit (${Math.round(dur)}s). Please trim your video.`);
+        return;
+      }
+    } catch {
+      // If we can't read duration, let the backend check catch it
+    }
+
     setVideoPreviewAdmin(URL.createObjectURL(file));
     setVideoUploading(true);
     setVideoProgress(0);
@@ -246,8 +277,10 @@ export default function PostScreen() {
       const data = await uploadWithProgress(file, "/api/upload/video", setVideoProgress);
       setUploadedVideoUrlAdmin(data.url);
     } catch (err) {
-      setVideoError(err instanceof Error ? err.message : "Upload failed");
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setVideoError(msg);
       setVideoPreviewAdmin(null);
+      setUploadedVideoUrlAdmin("");
     } finally {
       setVideoUploading(false);
     }
@@ -275,7 +308,7 @@ export default function PostScreen() {
     setUploadedVideoUrl("");
     resetImage();
     resetVideo();
-    setAspectRatio("9:16");
+    setAspectRatio("16:9");
     setForm({ title: "", description: "", cuisine_type: "", pay_rate: "", hours: "", experience_level: "", location: "", category: defaultCategory, price: "", event_date: "", event_time: "", scheduled_at: "" });
   };
 
@@ -463,7 +496,7 @@ export default function PostScreen() {
                         </div>
                       ) : (
                         <button onClick={() => videoInputRef.current?.click()} disabled={videoUploading} className="w-full h-28 flex flex-col items-center justify-center">
-                          {videoUploading ? <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <><VideoIcon className="w-6 h-6 text-muted-foreground mb-1" /><span className="text-xs font-medium text-muted-foreground">🎬 Video</span></>}
+                          {videoUploading ? <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <><VideoIcon className="w-6 h-6 text-muted-foreground mb-1" /><span className="text-xs font-medium text-muted-foreground">🎬 Video (max 60s)</span></>}
                         </button>
                       )}
                     </div>

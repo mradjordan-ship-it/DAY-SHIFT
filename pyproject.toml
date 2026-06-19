@@ -25,6 +25,7 @@ dependencies = [
     "sentry-sdk>=2.60.0",
     "beautifulsoup4>=4.14.3",
     "lxml>=6.1.1",
+    "playwright>=1.60.0",
 ]
 
 [tool.uv]

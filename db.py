@@ -305,6 +305,36 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
         CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
         CREATE INDEX IF NOT EXISTS idx_videos_created_at ON videos(created_at DESC);
+
+        -- ── PROMO CODES ──
+        CREATE TABLE IF NOT EXISTS promo_codes (
+            id SERIAL PRIMARY KEY,
+            code TEXT UNIQUE NOT NULL,
+            description TEXT DEFAULT '',
+            discount_percent INTEGER DEFAULT 100,   -- 100 = free, 50 = half off, etc.
+            boost_tier TEXT DEFAULT '',              -- 'boost' | 'spotlight' | 'premium' — free boost on signup
+            boost_days INTEGER DEFAULT 0,            -- how many days the free boost lasts
+            max_redemptions INTEGER DEFAULT 0,       -- 0 = unlimited
+            redeemed_count INTEGER DEFAULT 0,
+            expires_at TIMESTAMPTZ,
+            is_active BOOLEAN DEFAULT TRUE,
+            source TEXT DEFAULT '',                  -- e.g. 'The Everything Food Podcast'
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS promo_redemptions (
+            id SERIAL PRIMARY KEY,
+            promo_code_id INTEGER REFERENCES promo_codes(id),
+            user_id INTEGER REFERENCES users(id),
+            boost_used BOOLEAN DEFAULT FALSE,
+            redeemed_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, promo_code_id)           -- one redemption per user per code
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code);
+        CREATE INDEX IF NOT EXISTS idx_promo_redemptions_user ON promo_redemptions(user_id);
+
+        ALTER TABLE promo_redemptions ADD COLUMN IF NOT EXISTS boost_used BOOLEAN DEFAULT FALSE;
     """)
 
     conn.commit()
@@ -328,6 +358,28 @@ def init_db():
             )
             conn.commit()
             print("Created default admin user")
+
+    # ── Seed promo codes ──
+    promo_codes = [
+        {
+            "code": "EVERYTHINGFOOD",
+            "description": "The Everything Food Podcast — free Spotlight boost on signup",
+            "discount_percent": 100,
+            "boost_tier": "spotlight",
+            "boost_days": 3,
+            "source": "The Everything Food Podcast",
+        },
+    ]
+    for pc in promo_codes:
+        cur.execute("SELECT id FROM promo_codes WHERE code = %s", (pc["code"],))
+        if not cur.fetchone():
+            cur.execute(
+                """INSERT INTO promo_codes (code, description, discount_percent, boost_tier, boost_days, source)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (pc["code"], pc["description"], pc["discount_percent"], pc["boost_tier"], pc["boost_days"], pc["source"]),
+            )
+            conn.commit()
+            print(f"Seeded promo code: {pc['code']}")
 
     cur.close()
     conn.close()

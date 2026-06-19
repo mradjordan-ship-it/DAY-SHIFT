@@ -1,4 +1,5 @@
 """Auth routes for Day Shift Marketplace."""
+import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -13,7 +14,7 @@ from .deps import (
     get_conn, hash_password, verify_password, create_token, get_current_user,
     UPLOAD_DIR, MAX_IMAGE_BYTES,
 )
-from .models import RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody
+from .models import RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody, ChangePasswordBody
 from .email_utils import send_verification_email, send_password_reset_email
 
 api = APIRouter()
@@ -23,7 +24,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 def _get_base_url_from_request(request: Request) -> str:
     """Derive the public base URL from the request for email links."""
-    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN") if (os := __import__("os")) else None
+    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
     if custom_domain:
         return f"https://{custom_domain}"
     origin = request.headers.get("origin") or request.headers.get("referer", "")
@@ -82,6 +83,7 @@ async def register(
     privacy_accepted: str = Form(...),
     marketing_opt_in: str = Form(...),
     recaptcha_token: str = Form(""),
+    promo_code: str = Form(""),
 ):
     # reCAPTCHA verification
     _verify_recaptcha(recaptcha_token)
@@ -126,6 +128,49 @@ async def register(
         )
         user = dict(cur.fetchone())
         conn.commit()
+
+        # ── Promo code redemption ──
+        promo_applied = None
+        if promo_code and promo_code.strip():
+            pc = promo_code.strip().upper()
+            cur.execute(
+                """SELECT * FROM promo_codes WHERE code = %s AND is_active = TRUE""",
+                (pc,),
+            )
+            promo = cur.fetchone()
+            if promo:
+                promo = dict(promo)
+                # Check expiry
+                if promo["expires_at"] and promo["expires_at"] < datetime.now(timezone.utc):
+                    promo_applied = {"code": pc, "status": "expired"}
+                # Check max redemptions
+                elif promo["max_redemptions"] > 0 and promo["redeemed_count"] >= promo["max_redemptions"]:
+                    promo_applied = {"code": pc, "status": "maxed_out"}
+                else:
+                    # Redeem
+                    cur.execute(
+                        """INSERT INTO promo_redemptions (promo_code_id, user_id) VALUES (%s, %s)
+                           ON CONFLICT (user_id, promo_code_id) DO NOTHING
+                           RETURNING id""",
+                        (promo["id"], user["id"]),
+                    )
+                    redemption = cur.fetchone()
+                    if redemption:
+                        cur.execute(
+                            "UPDATE promo_codes SET redeemed_count = redeemed_count + 1 WHERE id = %s",
+                            (promo["id"],),
+                        )
+                        promo_applied = {
+                            "code": pc,
+                            "status": "redeemed",
+                            "boost_tier": promo["boost_tier"],
+                            "boost_days": promo["boost_days"],
+                            "discount_percent": promo["discount_percent"],
+                            "source": promo["source"],
+                        }
+                    else:
+                        promo_applied = {"code": pc, "status": "already_redeemed"}
+                conn.commit()
     except Exception as e:
         conn.rollback()
         dest.unlink(missing_ok=True)
@@ -143,7 +188,7 @@ async def register(
     token = create_token(user["id"])
     for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token"):
         user.pop(f, None)
-    return {"token": token, "user": user}
+    return {"token": token, "user": user, "promo": promo_applied}
 
 
 @api.post("/auth/login")
@@ -202,6 +247,28 @@ def forgot_password(body: ForgotPasswordBody, request: Request):
         "ok": True,
         "message": "If that email is registered, a reset link has been sent.",
     }
+
+
+@api.post("/auth/change-password")
+@limiter.limit("5/minute")
+def change_password(body: ChangePasswordBody, request: Request, current_user=Depends(get_current_user)):
+    _validate_password(body.new_password)
+    
+    if not verify_password(body.current_password, current_user["password_hash"]):
+        raise HTTPException(400, "Current password is incorrect")
+    
+    if body.current_password == body.new_password:
+        raise HTTPException(400, "New password must be different from current password")
+    
+    new_hash = hash_password(body.new_password)
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, current_user["id"]))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return {"ok": True, "message": "Password updated successfully"}
 
 
 @api.post("/auth/reset-password")
@@ -356,3 +423,49 @@ def resend_verification(body: dict, request: Request):
     send_verification_email(email, user["name"], new_token, base_url)
 
     return {"ok": True, "message": "If that email is registered and unverified, a new verification link has been sent."}
+
+
+# ── Promo code endpoints ──
+
+@api.get("/promo/validate/{code}")
+def validate_promo_code(code: str):
+    """Check if a promo code is valid (for showing preview on signup form)."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM promo_codes WHERE code = %s AND is_active = TRUE", (code.upper(),))
+    promo = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not promo:
+        return {"valid": False}
+    promo = dict(promo)
+    return {
+        "valid": True,
+        "code": promo["code"],
+        "description": promo["description"],
+        "boost_tier": promo["boost_tier"],
+        "boost_days": promo["boost_days"],
+        "discount_percent": promo["discount_percent"],
+        "source": promo["source"],
+    }
+
+
+@api.get("/promo/my-redemption")
+def get_my_promo_redemption(current_user=Depends(get_current_user)):
+    """Get the current user's promo code redemption (for applying free boost)."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """SELECT pr.*, pc.code, pc.boost_tier, pc.boost_days, pc.discount_percent, pc.source, pc.description
+           FROM promo_redemptions pr
+           JOIN promo_codes pc ON pr.promo_code_id = pc.id
+           WHERE pr.user_id = %s
+           ORDER BY pr.redeemed_at DESC""",
+        (current_user["id"],),
+    )
+    redemption = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not redemption:
+        return {"redeemed": False}
+    return {"redeemed": True, **dict(redemption)}

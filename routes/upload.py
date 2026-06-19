@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Request
 from fastapi.responses import FileResponse, StreamingResponse
 import aiofiles
 
-from .deps import get_current_user, UPLOAD_DIR, MAX_VIDEO_BYTES, MAX_IMAGE_BYTES
+from .deps import get_current_user, UPLOAD_DIR, MAX_VIDEO_BYTES, MAX_IMAGE_BYTES, MAX_VIDEO_DURATION_SECONDS, get_video_duration
 
 api = APIRouter()
 
@@ -34,6 +34,12 @@ async def upload_video(file: UploadFile = File(...), current_user=Depends(get_cu
                 raw_dest.unlink(missing_ok=True)
                 raise HTTPException(400, f"Video exceeds {MAX_VIDEO_BYTES // (1024*1024)}MB limit")
             await f.write(chunk)
+
+    # Check video duration — must be 60 seconds or less
+    duration = await get_video_duration(raw_dest)
+    if duration is not None and duration > MAX_VIDEO_DURATION_SECONDS:
+        raw_dest.unlink(missing_ok=True)
+        raise HTTPException(400, f"Video exceeds {MAX_VIDEO_DURATION_SECONDS}-second limit. Your video is {int(duration)} seconds.")
 
     # Transcode to H.264 MP4 (faststart, capped 1080p, AAC audio)
     from .deps import transcode_video

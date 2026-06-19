@@ -499,7 +499,7 @@ export default function FeedScreen() {
                   <ChefHat className="w-7 h-7 text-primary" />
                 </div>
                 <h3 className="text-lg text-foreground font-bold mb-1" style={{ fontFamily: "'Bebas Neue'" }}>Join Day Shift</h3>
-                <p className="text-muted-foreground text-xs mb-4 max-w-xs">Match with your next shift. Workers and kitchens, one feed.</p>
+                <p className="text-muted-foreground text-xs mb-4 max-w-xs">Match with your next shift. Workers and kitchens, one feed today!</p>
                 <button
                   onClick={() => navigate("login")}
                   className="bg-primary text-primary-foreground px-6 py-2 rounded-xl text-sm font-semibold ember-glow"
@@ -762,9 +762,8 @@ function VideoCard({
     } catch {}
   };
 
-  // Aspect ratio style for the media container
-  const ar = video.aspect_ratio || "9:16";
-  const cardAspect = ar === "9:16" ? "3/4" : ar === "4:5" ? "4/5" : ar === "1:1" ? "1/1" : ar === "16:9" ? "16/9" : "3/4";
+  // All feed cards use a uniform portrait ratio so the grid is consistent
+  const cardAspect = "3/4";
 
   const sponsored = video.category === "sponsored";
 
@@ -812,7 +811,7 @@ function VideoCard({
           {!videoError && <video ref={videoRef} src={video.video_url} preload="metadata" className="absolute inset-0 w-full h-full object-cover" loop playsInline webkit-playsinline="true" muted onClick={togglePlay} style={{ opacity: playing ? 1 : 0, transition: 'opacity 0.3s' }} onError={() => setVideoError(true)} />}
         </>
       ) : video.image_url ? (
-        /* Image only — card aspect matches image, so object-cover fills perfectly */
+        /* Image only */
         <img src={video.image_url} alt={video.title || ""} className="absolute inset-0 w-full h-full object-cover" />
       ) : video.video_url && !videoError ? (
         /* Video only */
@@ -1378,7 +1377,7 @@ function VideoCard({
                   )}
                 </div>
                 {video.description && (
-                  <p className="text-white/70 text-xs leading-relaxed line-clamp-2 mt-1">{video.description}</p>
+                  <p className="text-white/70 text-xs leading-relaxed mt-1 whitespace-pre-wrap">{video.description}</p>
                 )}
               </div>
             )}

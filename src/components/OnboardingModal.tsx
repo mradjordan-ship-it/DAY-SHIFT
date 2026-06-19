@@ -13,7 +13,7 @@ const steps = [
   {
     emoji: "📹",
     title: "Post Your Story",
-    desc: "Share short videos showcasing your skills, kitchen, or job openings. Video is your resume here.",
+    desc: "Share videos up to 60 seconds showcasing your skills, kitchen, or job openings. Video is your resume here.",
   },
   {
     emoji: "🤝",

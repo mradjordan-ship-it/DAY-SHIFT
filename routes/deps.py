@@ -37,6 +37,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024   # 10 MB
 MAX_VIDEO_BYTES = 100 * 1024 * 1024  # 100 MB
+MAX_VIDEO_DURATION_SECONDS = 60       # Videos must be 60 seconds or less
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -44,6 +45,38 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 FFMPEG_BIN = imageio_ffmpeg.get_ffmpeg_exe()
+
+
+async def get_video_duration(path: Path) -> float | None:
+    """Return video duration in seconds using ffmpeg, or None on failure.
+    
+    Uses ffmpeg to probe the input file and parses duration from stderr output.
+    This avoids needing ffprobe, which imageio_ffmpeg does not ship.
+    """
+    cmd = [
+        FFMPEG_BIN,
+        "-i", str(path),
+        "-f", "null",
+        "-t", "0",        # Don't actually decode frames — just probe
+        "-",
+    ]
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+        # ffmpeg writes input info to stderr, e.g.:
+        #   Duration: 00:01:05.12, start: 0.000000, bitrate: 1234 kb/s
+        import re
+        match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", stderr.decode(errors="replace"))
+        if match:
+            h, m, s = int(match.group(1)), int(match.group(2)), float(match.group(3))
+            return h * 3600 + m * 60 + s
+        return None
+    except Exception:
+        return None
 
 
 async def transcode_video(src: Path, dest: Path) -> bool:

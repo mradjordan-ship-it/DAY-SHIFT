@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff, Video as VideoIcon
+  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff, Video as VideoIcon, Lock
 } from "lucide-react";
 import { RoleIcon, CategoryIcon, SaleIcon, EventIcon } from "./Icons";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,13 @@ export default function ProfileScreen() {
   const [editingPost, setEditingPost] = useState<Video | null>(null);
   const [postForm, setPostForm] = useState<{ title: string; description: string; repost: boolean; category: string; price: string; event_date: string; event_time: string; aspect_ratio: string; file?: File }>({ title: "", description: "", repost: false, category: "general", price: "", event_date: "", event_time: "", aspect_ratio: "9:16" });
   const [postSaving, setPostSaving] = useState(false);
+
+  // Password change state
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   // Push notifications
   const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
@@ -352,20 +359,20 @@ export default function ProfileScreen() {
           </div>
         </button>
 
-        {!user.is_admin && (
-          <button
-            onClick={() => navigate("boost")}
-            className="w-full mt-2 p-3 bg-gradient-to-r from-purple-500/10 to-violet-500/10 border border-purple-500/20 rounded-xl flex items-center gap-3 hover:from-purple-500/20 hover:to-violet-500/20 transition-colors text-left"
-          >
-            <div className="w-9 h-9 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-              <Zap size={16} className="text-purple-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-foreground font-semibold text-sm">Boost Your Posts 🚀</p>
-              <p className="text-muted-foreground text-xs">Get more visibility with sponsored boosts</p>
-            </div>
-          </button>
-        )}
+        {/* Change Password */}
+        <button
+          onClick={() => { setPwForm({ current: "", next: "", confirm: "" }); setPwError(""); setPwSuccess(false); setPwOpen(true); }}
+          className="w-full mt-2 p-3 bg-card border border-border rounded-xl flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+            <Lock size={16} className="text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-foreground font-semibold text-sm">Change Password</p>
+          </div>
+        </button>
+
+
       </div>
 
       {/* Videos list — same style as admin */}
@@ -792,6 +799,83 @@ export default function ProfileScreen() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Change Password Dialog ──────────────────────────────────────── */}
+      <Dialog open={pwOpen} onOpenChange={setPwOpen}>
+        <DialogContent className="bg-card border-border max-w-sm mx-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2" style={{ fontFamily: "'Bebas Neue'", fontSize: "1.4rem" }}>
+              <Lock size={18} /> Change Password
+            </DialogTitle>
+          </DialogHeader>
+          {pwSuccess ? (
+            <div className="text-center py-4">
+              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
+                <Star size={20} className="text-green-400" />
+              </div>
+              <p className="text-foreground font-semibold text-sm">Password updated!</p>
+              <p className="text-muted-foreground text-xs mt-1">Use your new password next time you sign in.</p>
+              <Button onClick={() => setPwOpen(false)} className="mt-4 w-full">Done</Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-muted-foreground text-xs">Current Password</Label>
+                <Input
+                  type="password"
+                  value={pwForm.current}
+                  onChange={(e) => setPwForm(f => ({ ...f, current: e.target.value }))}
+                  className="bg-background border-border mt-1"
+                  placeholder="Enter current password"
+                />
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">New Password</Label>
+                <Input
+                  type="password"
+                  value={pwForm.next}
+                  onChange={(e) => setPwForm(f => ({ ...f, next: e.target.value }))}
+                  className="bg-background border-border mt-1"
+                  placeholder="At least 8 chars, 1 letter, 1 number"
+                />
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs">Confirm New Password</Label>
+                <Input
+                  type="password"
+                  value={pwForm.confirm}
+                  onChange={(e) => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                  className="bg-background border-border mt-1"
+                  placeholder="Re-enter new password"
+                />
+              </div>
+              {pwError && <p className="text-red-400 text-xs text-center">{pwError}</p>}
+              <Button
+                onClick={async () => {
+                  if (pwForm.next !== pwForm.confirm) { setPwError("Passwords don't match"); return; }
+                  if (pwForm.next.length < 8) { setPwError("Password must be at least 8 characters"); return; }
+                  setPwSaving(true); setPwError("");
+                  try {
+                    const res = await fetch("/api/auth/change-password", {
+                      method: "POST",
+                      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                      body: JSON.stringify({ current_password: pwForm.current, new_password: pwForm.next }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) { setPwError(data.detail || "Failed to change password"); return; }
+                    setPwSuccess(true);
+                  } catch { setPwError("Network error"); }
+                  finally { setPwSaving(false); }
+                }}
+                disabled={pwSaving || !pwForm.current || !pwForm.next || !pwForm.confirm}
+                className="w-full"
+              >
+                {pwSaving ? "Updating..." : "Update Password"}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

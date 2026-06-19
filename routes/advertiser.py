@@ -137,6 +137,7 @@ def create_boost(body: BoostBody, request: Request, current_user=Depends(get_cur
             mode="payment",
             success_url=f"{origin}/boost?success=1&session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{origin}/boost?canceled=1",
+            customer_email=None,  # Don't prefill — let customer enter their own
             metadata={
                 "boost_id": boost["id"],
                 "user_id": current_user["id"],
@@ -168,6 +169,84 @@ def create_boost(body: BoostBody, request: Request, current_user=Depends(get_cur
         "price": tier_info["price"],
         "stripe_checkout_url": checkout_session.url,
         "stripe_session_id": checkout_session.id,
+    }
+
+
+@api.post("/advertiser/free-boost/{video_id}")
+def create_free_promo_boost(video_id: int, current_user=Depends(get_current_user)):
+    """Apply a free boost using a redeemed promo code."""
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # Verify video belongs to user
+    cur.execute("SELECT user_id, title FROM videos WHERE id = %s", (video_id,))
+    vid = cur.fetchone()
+    if not vid:
+        cur.close()
+        conn.close()
+        raise HTTPException(404, "Post not found")
+    if vid["user_id"] != current_user["id"]:
+        cur.close()
+        conn.close()
+        raise HTTPException(403, "Can only boost your own posts")
+
+    # Check for existing active boost
+    cur.execute("SELECT id FROM post_boosts WHERE video_id = %s AND status = 'active' AND end_date > NOW()", (video_id,))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        raise HTTPException(400, "This post already has an active boost")
+
+    # Check for unused promo redemption with boost_tier
+    cur.execute(
+        """SELECT pr.id as redemption_id, pr.boost_used, pc.code, pc.boost_tier, pc.boost_days
+           FROM promo_redemptions pr
+           JOIN promo_codes pc ON pr.promo_code_id = pc.id
+           WHERE pr.user_id = %s AND pc.boost_tier IS NOT NULL AND pc.boost_tier != ''
+           AND (pr.boost_used IS NULL OR pr.boost_used = FALSE)
+           ORDER BY pr.redeemed_at ASC
+           LIMIT 1""",
+        (current_user["id"],),
+    )
+    redemption = cur.fetchone()
+    if not redemption:
+        cur.close()
+        conn.close()
+        raise HTTPException(400, "No free boost available. Sign up with a promo code to get one!")
+
+    redemption = dict(redemption)
+    tier = redemption["boost_tier"]
+    tier_info = TIERS.get(tier, TIERS["boost"])
+    duration = redemption["boost_days"] or tier_info["duration_days"]
+
+    now = datetime.now(timezone.utc)
+    end = now + timedelta(days=duration)
+
+    # Create and activate the free boost
+    cur.execute(
+        """INSERT INTO post_boosts (video_id, user_id, tier, status, payment_status, admin_approved, start_date, end_date, stripe_session_id)
+           VALUES (%s, %s, %s, 'active', 'paid', TRUE, %s, %s, %s) RETURNING *""",
+        (video_id, current_user["id"], tier, now, end, f"PROMO:{redemption['code']}"),
+    )
+    boost = dict(cur.fetchone())
+
+    # Mark redemption as used
+    cur.execute(
+        "UPDATE promo_redemptions SET boost_used = TRUE WHERE id = %s",
+        (redemption["redemption_id"],),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    for k in ("created_at", "start_date", "end_date"):
+        if boost.get(k):
+            boost[k] = boost[k].isoformat()
+
+    return {
+        "ok": True,
+        "message": f"Free {tier_info['name']} boost activated for {duration} days!",
+        "boost": boost,
     }
 
 

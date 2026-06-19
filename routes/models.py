@@ -44,6 +44,11 @@ class ResetPasswordBody(BaseModel):
     new_password: str
 
 
+class ChangePasswordBody(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class BoostBody(BaseModel):
     video_id: int
     tier: str  # 'boost' | 'spotlight' | 'premium'
