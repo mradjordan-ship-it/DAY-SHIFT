@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff, Video as VideoIcon, Lock
+  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff, Video as VideoIcon, Lock, ChevronDown, ChevronUp
 } from "lucide-react";
 import { RoleIcon, CategoryIcon, SaleIcon, EventIcon } from "./Icons";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,7 @@ export default function ProfileScreen() {
   const [editingPost, setEditingPost] = useState<Video | null>(null);
   const [postForm, setPostForm] = useState<{ title: string; description: string; repost: boolean; category: string; price: string; event_date: string; event_time: string; aspect_ratio: string; file?: File }>({ title: "", description: "", repost: false, category: "general", price: "", event_date: "", event_time: "", aspect_ratio: "9:16" });
   const [postSaving, setPostSaving] = useState(false);
+  const [expandedPost, setExpandedPost] = useState<number | null>(null);
 
   // Password change state
   const [pwOpen, setPwOpen] = useState(false);
@@ -381,58 +382,94 @@ export default function ProfileScreen() {
           <div className="space-y-2">
             {videos.map((video) => (
               <div key={video.id} className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="p-3">
-                  <div className="flex items-start gap-3">
-                    {/* Thumbnail */}
+                {/* Collapsible header */}
+                <button
+                  onClick={() => setExpandedPost(expandedPost === video.id ? null : video.id)}
+                  className="w-full p-3 flex items-center justify-between hover:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
                     {video.image_url ? (
-                      <img src={video.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
+                      <img src={video.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-black flex-shrink-0" />
                     ) : video.video_url ? (
-                      <div className="w-16 h-16 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
-                        <VideoIcon size={20} />
+                      <div className="w-10 h-10 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                        <VideoIcon size={16} />
                       </div>
                     ) : (
-                      <div className="w-16 h-16 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[10px]">
+                      <div className="w-10 h-10 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[9px]">
                         Text
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
+                    <div className="text-left min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground text-sm truncate">{video.title || "Untitled"}</span>
                         {video.category && (
                           <Badge className="text-[9px] border-0 bg-muted text-muted-foreground">{video.category}</Badge>
                         )}
                       </div>
-                      {video.description && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{video.description}</p>
-                      )}
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {video.location && <span className="text-[10px] text-muted-foreground">📍 {video.location}</span>}
-                        {video.pay_rate && <span className="text-[10px] text-muted-foreground">💰 {video.pay_rate}</span>}
-                        <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
-                      </div>
+                      <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
-                    <Button size="sm" variant="outline" onClick={() => openEditPost(video)} className="text-xs flex-shrink-0">
-                      <Pencil size={12} className="mr-1" /> Edit
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDeleteVideo(video.id)} className="text-xs text-destructive border-destructive/40 hover:bg-destructive/10 flex-shrink-0">
-                      <Trash2 size={12} />
-                    </Button>
-                    <div className="flex-1" />
-                    {!isAdmin && (
-                      <>
-                        <Button size="sm" onClick={() => navigate("boost", { videoId: video.id })} className="h-7 px-2 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0">
-                          <Zap size={12} className="mr-0.5" /> Boost
-                        </Button>
-                        <Button size="sm" onClick={() => navigate("advertise")} className="h-7 px-2 text-xs bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0">
-                          <Sparkles size={12} className="mr-0.5" /> Ad
-                        </Button>
-                      </>
-                    )}
+                  {expandedPost === video.id ? (
+                    <ChevronUp size={16} className="text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronDown size={16} className="text-muted-foreground flex-shrink-0" />
+                  )}
+                </button>
+
+                {/* Expanded details + actions */}
+                {expandedPost === video.id && (
+                  <div className="border-t border-border p-3 bg-secondary/20">
+                    <div className="flex items-start gap-3">
+                      {video.image_url ? (
+                        <img src={video.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
+                      ) : video.video_url ? (
+                        <div className="w-16 h-16 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                          <VideoIcon size={20} />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[10px]">
+                          Text
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground text-sm truncate">{video.title || "Untitled"}</span>
+                          {video.category && (
+                            <Badge className="text-[9px] border-0 bg-muted text-muted-foreground">{video.category}</Badge>
+                          )}
+                        </div>
+                        {video.description && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{video.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {video.location && <span className="text-[10px] text-muted-foreground">📍 {video.location}</span>}
+                          {video.pay_rate && <span className="text-[10px] text-muted-foreground">💰 {video.pay_rate}</span>}
+                          <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                      <Button size="sm" variant="outline" onClick={() => openEditPost(video)} className="text-xs flex-shrink-0">
+                        <Pencil size={12} className="mr-1" /> Edit
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleDeleteVideo(video.id)} className="text-xs text-destructive border-destructive/40 hover:bg-destructive/10 flex-shrink-0">
+                        <Trash2 size={12} />
+                      </Button>
+                      <div className="flex-1" />
+                      {!isAdmin && (
+                        <>
+                          <Button size="sm" onClick={() => navigate("boost", { videoId: video.id })} className="h-7 px-2 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0">
+                            <Zap size={12} className="mr-0.5" /> Boost
+                          </Button>
+                          <Button size="sm" onClick={() => navigate("advertise")} className="h-7 px-2 text-xs bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0">
+                            <Sparkles size={12} className="mr-0.5" /> Ad
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
