@@ -60,20 +60,31 @@ export default function ProfileScreen() {
   // Push notifications
   const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
 
+  // Dashboard state
+  const [expandedDash, setExpandedDash] = useState(false);
+  const [dashData, setDashData] = useState<{
+    total_posts: number; total_likes: number; total_matches: number; pending_matches: number; active_matches: number;
+    active_boosts: Array<{ id: number; tier: string; video_title: string; end_date: string }>;
+    advertiser_status: { active: boolean; tier: string | null };
+    recent_activity: Array<{ type: string; label: string; created_at: string }>;
+  } | null>(null);
+
   useEffect(() => {
     if (!user || !token) return;
     setForm({ name: user.name, email: user.email || "", bio: user.bio || "" });
 
     const fetchData = async () => {
-      const [vRes, rRes] = await Promise.all([
+      const [vRes, rRes, dRes] = await Promise.all([
         fetch(`/api/videos?user_id=${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`/api/users/${user.id}/reviews`),
+        fetch(`/api/dashboard`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       if (vRes.ok) {
         const vData = await vRes.json();
         setVideos(Array.isArray(vData) ? vData : vData.videos || []);
       }
       if (rRes.ok) setReviews(await rRes.json());
+      if (dRes.ok) setDashData(await dRes.json());
     };
     fetchData();
   }, [user, token]);
@@ -360,8 +371,172 @@ export default function ProfileScreen() {
           </div>
         </button>
 
-
       </div>
+
+      {/* Dashboard — collapsible overview */}
+      {dashData && (
+        <div className="px-5 mb-5">
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <button
+              onClick={() => setExpandedDash(!expandedDash)}
+              className="w-full p-3 flex items-center justify-between hover:bg-secondary/30 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                  <Building2 size={14} className="text-purple-400" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground text-sm">Dashboard</p>
+                  <p className="text-[11px] text-muted-foreground">{dashData.total_posts} posts · {dashData.total_matches} matches</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {dashData.active_boosts.length > 0 && (
+                  <Badge className="text-[10px] border-0 bg-green-500/20 text-green-400">
+                    {dashData.active_boosts.length} boost{dashData.active_boosts.length !== 1 ? "s" : ""} active
+                  </Badge>
+                )}
+                {expandedDash ? (
+                  <ChevronUp size={16} className="text-muted-foreground" />
+                ) : (
+                  <ChevronDown size={16} className="text-muted-foreground" />
+                )}
+              </div>
+            </button>
+
+            {expandedDash && (
+              <div className="border-t border-border p-3 space-y-4">
+                {/* Account Status */}
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Account Status</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-foreground">{dashData.total_posts}</p>
+                      <p className="text-[9px] text-muted-foreground">Posts</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-foreground">{dashData.total_likes}</p>
+                      <p className="text-[9px] text-muted-foreground">Likes</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-foreground">{dashData.total_matches}</p>
+                      <p className="text-[9px] text-muted-foreground">Matches</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-primary flex items-center justify-center gap-0.5">
+                        <Star size={10} className="fill-primary" />
+                        {user.avg_rating ? Number(user.avg_rating).toFixed(1) : "—"}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Rating</p>
+                    </div>
+                  </div>
+                  {dashData.pending_matches > 0 && (
+                    <div className="mt-2 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                      <MessageCircle size={12} className="text-amber-400 flex-shrink-0" />
+                      <p className="text-[11px] text-amber-400">{dashData.pending_matches} pending match{dashData.pending_matches !== 1 ? "es" : ""} waiting for response</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Active Boosts */}
+                {dashData.active_boosts.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Active Boosts</p>
+                    <div className="space-y-1.5">
+                      {dashData.active_boosts.map((b) => (
+                        <div key={b.id} className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Zap size={12} className="text-amber-400 flex-shrink-0" />
+                            <span className="text-xs text-foreground truncate">{b.video_title || "Post"}</span>
+                          </div>
+                          <Badge className="text-[9px] border-0 bg-amber-500/20 text-amber-400 flex-shrink-0">
+                            {b.tier} · {new Date(b.end_date).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Advertiser Status */}
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Advertiser Status</p>
+                  <div className="flex items-center justify-between bg-secondary/30 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={12} className={dashData.advertiser_status.active ? "text-purple-400" : "text-muted-foreground"} />
+                      <span className="text-xs text-foreground">
+                        {dashData.advertiser_status.active
+                          ? `Active — ${dashData.advertiser_status.tier?.charAt(0).toUpperCase() + dashData.advertiser_status.tier?.slice(1)} Plan`
+                          : "Not subscribed"}
+                      </span>
+                    </div>
+                    {!dashData.advertiser_status.active && (
+                      <Button
+                        size="sm"
+                        onClick={() => navigate("advertise")}
+                        className="h-6 px-2 text-[10px] bg-primary hover:bg-primary/90 text-primary-foreground"
+                      >
+                        Subscribe
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Links */}
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Quick Links</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => navigate("boost")}
+                      className="flex items-center gap-2 bg-secondary/30 rounded-lg px-3 py-2 hover:bg-secondary/50 transition-colors"
+                    >
+                      <Zap size={14} className="text-amber-400" />
+                      <span className="text-xs text-foreground font-medium">Boost a Post</span>
+                    </button>
+                    <button
+                      onClick={() => navigate("analytics")}
+                      className="flex items-center gap-2 bg-secondary/30 rounded-lg px-3 py-2 hover:bg-secondary/50 transition-colors"
+                    >
+                      <Building2 size={14} className="text-purple-400" />
+                      <span className="text-xs text-foreground font-medium">Analytics</span>
+                    </button>
+                    {dashData.advertiser_status.active && (
+                      <button
+                        onClick={() => navigate("advertise")}
+                        className="flex items-center gap-2 bg-secondary/30 rounded-lg px-3 py-2 hover:bg-secondary/50 transition-colors"
+                      >
+                        <Sparkles size={14} className="text-purple-400" />
+                        <span className="text-xs text-foreground font-medium">Manage Ads</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Recent Activity */}
+                {dashData.recent_activity.length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Recent Activity</p>
+                    <div className="space-y-1.5">
+                      {dashData.recent_activity.slice(0, 5).map((item, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs">
+                          <Badge className="text-[8px] border-0 w-6 justify-center flex-shrink-0 bg-muted text-muted-foreground">
+                            {item.type === "post" ? "📝" : item.type === "match" ? "🤝" : "⭐"}
+                          </Badge>
+                          <span className="text-foreground truncate flex-1">
+                            {item.type === "post" ? "New post" : item.type === "match" ? `Match ${item.label}` : `Review received`}
+                            {item.label && item.type !== "match" ? `: ${item.label}` : ""}
+                          </span>
+                          <span className="text-muted-foreground text-[10px] flex-shrink-0">{new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* My Posts — single collapsible container */}
       {videos.length > 0 && (

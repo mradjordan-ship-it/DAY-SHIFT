@@ -187,3 +187,103 @@ async def update_avatar(file: UploadFile = File(...), current_user=Depends(get_c
     for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token", "email"):
         user.pop(f, None)
     return user
+
+
+@api.get("/dashboard")
+def get_dashboard(current_user=Depends(get_current_user)):
+    """Dashboard overview: account status, boosts, advertiser status, recent activity."""
+    conn = get_conn()
+    cur = conn.cursor()
+    uid = current_user["id"]
+
+    # 1. Account stats
+    cur.execute("SELECT COUNT(*) FROM videos WHERE user_id = %s", (uid,))
+    total_posts = cur.fetchone()["count"]
+
+    cur.execute(
+        """SELECT COUNT(*) FROM matches WHERE (worker_id = %s OR employer_id = %s)""",
+        (uid, uid),
+    )
+    total_matches = cur.fetchone()["count"]
+
+    cur.execute(
+        """SELECT COUNT(*) FROM matches WHERE (worker_id = %s OR employer_id = %s) AND status = 'pending'""",
+        (uid, uid),
+    )
+    pending_matches = cur.fetchone()["count"]
+
+    cur.execute(
+        """SELECT COUNT(*) FROM matches WHERE (worker_id = %s OR employer_id = %s) AND status = 'active'""",
+        (uid, uid),
+    )
+    active_matches = cur.fetchone()["count"]
+
+    cur.execute(
+        """SELECT COUNT(*) FROM videos WHERE user_id = %s""",
+        (uid,),
+    )
+    total_likes = 0
+    cur.execute("SELECT COALESCE(SUM(likes), 0) as total_likes FROM videos WHERE user_id = %s", (uid,))
+    total_likes = cur.fetchone()["total_likes"]
+
+    # 2. Active boosts
+    cur.execute(
+        """SELECT pb.*, v.title as video_title, v.thumbnail_url, v.image_url
+           FROM post_boosts pb
+           LEFT JOIN videos v ON pb.video_id = v.id
+           WHERE pb.user_id = %s AND pb.status = 'active' AND pb.end_date > NOW()
+           ORDER BY pb.end_date ASC""",
+        (uid,),
+    )
+    active_boosts = []
+    for row in cur.fetchall():
+        b = dict(row)
+        for k in ("start_date", "end_date", "created_at"):
+            if b.get(k): b[k] = b[k].isoformat()
+        active_boosts.append(b)
+
+    # 3. Advertiser subscription status
+    cur.execute(
+        """SELECT * FROM advertiser_subscriptions WHERE user_id = %s ORDER BY created_at DESC LIMIT 1""",
+        (uid,),
+    )
+    sub = cur.fetchone()
+    advertiser_status = {
+        "active": False,
+        "tier": None,
+    }
+    if sub:
+        advertiser_status = {
+            "active": sub.get("status") == "active",
+            "tier": sub.get("tier"),
+        }
+
+    # 4. Recent activity (last 10 events across posts, matches, reviews)
+    cur.execute(
+        """SELECT 'post' as type, id, title as label, created_at FROM videos WHERE user_id = %s
+           UNION ALL
+           SELECT 'match' as type, id, status as label, created_at FROM matches WHERE worker_id = %s OR employer_id = %s
+           UNION ALL
+           SELECT 'review' as type, id, feedback as label, created_at FROM reviews WHERE reviewee_id = %s
+           ORDER BY created_at DESC LIMIT 10""",
+        (uid, uid, uid, uid),
+    )
+    recent = []
+    for row in cur.fetchall():
+        r = dict(row)
+        if r.get("created_at"): r["created_at"] = r["created_at"].isoformat()
+        recent.append(r)
+
+    cur.close()
+    conn.close()
+
+    return {
+        "total_posts": total_posts,
+        "total_likes": total_likes,
+        "total_matches": total_matches,
+        "pending_matches": pending_matches,
+        "active_matches": active_matches,
+        "active_boosts": active_boosts,
+        "advertiser_status": advertiser_status,
+        "recent_activity": recent,
+    }
