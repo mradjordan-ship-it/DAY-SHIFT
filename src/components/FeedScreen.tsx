@@ -456,16 +456,15 @@ export default function FeedScreen() {
                   );
                 }
                 if (item.type === "ticker") {
-                  const desktopSpan = "col-span-full";
                   return (
-                    <div key={`ticker-${item.idx}`} className={`col-span-full flex items-center py-2 ${desktopSpan}`}>
+                    <div key={`ticker-${item.idx}`} className="col-span-full md:hidden flex items-center py-2">
                       <TickerTape />
                     </div>
                   );
                 }
                 if (item.type === "carousel") {
                   return (
-                    <div key={`carousel-${item.carouselIdx}-${item.idx}`} className="col-span-full pb-2">
+                    <div key={`carousel-${item.carouselIdx}-${item.idx}`} className="col-span-full md:hidden pb-2">
                       <HorizontalDeckCard
                         videos={injectedCarousels[item.carouselIdx]}
                         currentUser={user}
@@ -858,9 +857,9 @@ function VideoCard({
       )}
 
       {/* Top gradient */}
-      <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
-      {/* Bottom gradient — taller to cover info area */}
-      <div className="absolute bottom-0 left-0 right-0 h-56 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+      {/* Bottom gradient — covers info area only */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
 
       {/* Type badges — top left */}
       {!isHorizontal && (
@@ -870,7 +869,7 @@ function VideoCard({
               ✦ Sponsored
             </Badge>
           )}
-          {video.category !== "sponsored" && (
+          {video.category !== "sponsored" && video.type !== "admin" && (
             <Badge
               className={cn("font-semibold border-0 backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 flex items-center gap-1",
                 video.type === "worker"
@@ -879,6 +878,11 @@ function VideoCard({
               )}
             >
               {video.type === "worker" ? <><HardHat size={12} /> Crew</> : <><Building2 size={12} /> Kitchen</>}
+            </Badge>
+          )}
+          {video.type === "admin" && video.category && (
+            <Badge className="font-semibold border-0 backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 bg-amber-500/20 text-amber-300 flex items-center gap-1">
+              <Sparkles size={12} /> {video.category}
             </Badge>
           )}
           {video.category === "sale" && (
@@ -904,7 +908,7 @@ function VideoCard({
               ✦ Sponsored
             </Badge>
           )}
-          {video.category !== "sponsored" && (
+          {video.category !== "sponsored" && video.type !== "admin" && (
             <Badge
               className={cn("font-semibold border-0 backdrop-blur text-[8px] px-1.5 py-0 flex items-center gap-0.5",
                 video.type === "worker"
@@ -913,6 +917,11 @@ function VideoCard({
               )}
             >
               {video.type === "worker" ? <><HardHat size={10} /> Crew</> : <><Building2 size={10} /> Kitchen</>}
+            </Badge>
+          )}
+          {video.type === "admin" && video.category && (
+            <Badge className="font-semibold border-0 backdrop-blur text-[8px] px-1.5 py-0 bg-amber-500/20 text-amber-300 flex items-center gap-0.5">
+              <Sparkles size={10} /> {video.category}
             </Badge>
           )}
           {video.category === "sale" && (
@@ -1009,8 +1018,9 @@ function VideoCard({
       )}
 
       {/* Bottom info — ultra-compact overlay with profile border */}
-      <div className={cn("absolute bottom-0 left-0 pointer-events-none", isHorizontal ? "px-2 pb-3" : "right-14 md:right-16 px-3 md:px-4 pb-5 md:pb-4")}>
+      <div className={cn("absolute bottom-0 left-0 pointer-events-none", isHorizontal ? "px-2 pb-2" : "right-14 md:right-16 px-3 md:px-4 pb-5 md:pb-4")}>
         {/* Author + title in one line */}
+        {!isHorizontal && (
         <div className="flex items-center gap-1 mb-1">
           <button className="flex items-center gap-1 pointer-events-auto shrink-0 bg-black/40 backdrop-blur-sm rounded-full pr-1.5 pl-0.5 py-0.5 border border-white/10" onClick={onProfile}>
             <div className={cn("rounded-full bg-secondary border border-primary overflow-hidden flex-shrink-0", isHorizontal ? "w-5 h-5" : "w-7 h-7 md:w-7 md:h-7")}>
@@ -1028,6 +1038,7 @@ function VideoCard({
             <span className="text-white/40 text-[9px] ml-1 md:text-[10px]">· {timeAgo(video.created_at)}</span>
           </button>
         </div>
+        )}
 
         {!isHorizontal && video.title && (
           <p
@@ -1041,8 +1052,13 @@ function VideoCard({
           </p>
         )}
         {isHorizontal && video.title && (
-          <p className="text-white font-bold leading-tight text-[11px] drop-shadow-md line-clamp-1">
+          <p className="text-white font-bold leading-tight text-[10px] drop-shadow-md line-clamp-1">
             {video.title}
+          </p>
+        )}
+        {isHorizontal && !video.title && video.description && (
+          <p className="text-white/90 leading-tight text-[10px] drop-shadow-md line-clamp-2">
+            {video.description}
           </p>
         )}
         {!isHorizontal && !video.title && video.description && (video.video_url || video.image_url) && (

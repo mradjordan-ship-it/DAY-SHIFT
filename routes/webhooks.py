@@ -55,13 +55,32 @@ async def stripe_webhook(request: Request):
         else:
             boost_id = metadata.get("boost_id")
             tier = metadata.get("tier")
-            if boost_id:
+            user_id = metadata.get("user_id")
+            # Advertising subscription checkout
+            if session.get("mode") == "subscription" and user_id and tier:
+                conn = get_conn()
+                cur = conn.cursor()
+                cur.execute(
+                    """UPDATE advertiser_subscriptions 
+                       SET status = 'active', start_date = NOW(),
+                           stripe_session_id = %s
+                       WHERE user_id = %s AND tier = %s AND status = 'pending'
+                       ORDER BY created_at DESC LIMIT 1""",
+                    (session.get("id"), int(user_id), tier),
+                )
+                # Mark user as advertiser
+                cur.execute(
+                    "UPDATE users SET is_advertiser = TRUE WHERE id = %s",
+                    (int(user_id),),
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+            elif boost_id:
                 conn = get_conn()
                 cur = conn.cursor()
                 tier_info = TIERS.get(tier, TIERS["boost"])
                 duration_days = int(tier_info["duration_days"])
-                # INTERVAL cannot use %s parameter inside a string literal,
-                # so we build the interval clause with a validated integer
                 interval_clause = f"INTERVAL '{duration_days} days'"
                 cur.execute(
                     f"""UPDATE post_boosts 
@@ -77,5 +96,21 @@ async def stripe_webhook(request: Request):
                 conn.commit()
                 cur.close()
                 conn.close()
+
+    # Handle subscription cancellation/expiration
+    if event.get("type") in ("customer.subscription.deleted", "customer.subscription.updated"):
+        sub_obj = event["data"]["object"]
+        sub_status = sub_obj.get("status")
+        if sub_status in ("canceled", "unpaid", "incomplete_expired"):
+            stripe_sub_id = sub_obj.get("id")
+            conn = get_conn()
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE advertiser_subscriptions SET status = 'cancelled' WHERE stripe_session_id = %s",
+                (stripe_sub_id,),
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
 
     return {"received": True}

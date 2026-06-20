@@ -317,6 +317,9 @@ export default function LandingScreen() {
       <footer className="px-5 py-6 border-t border-border text-center">
         <p className="text-xs text-muted-foreground mb-3">© 2026 Day Shift. All rights reserved.</p>
         <div className="flex justify-center gap-4 text-xs">
+          <button onClick={() => navigate("advertise")} className="text-primary font-semibold hover:text-primary/80 transition-colors">
+            Advertise with Us
+          </button>
           <button onClick={() => navigate("sponsor")} className="text-muted-foreground hover:text-foreground transition-colors">
             Support Us
           </button>

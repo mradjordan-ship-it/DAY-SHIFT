@@ -121,6 +121,7 @@ export type Screen =
   | "onboarding"
   | "about"
   | "boost"
+  | "advertise"
   | "analytics"
   | "landing";
 

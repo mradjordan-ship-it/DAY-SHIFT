@@ -74,6 +74,7 @@ const OfflineScreen = lazy(() => import("./components/OfflineScreen"));
 const OnboardingScreen = lazy(() => import("./components/OnboardingScreen"));
 const AboutScreen = lazy(() => import("./components/AboutScreen"));
 const BoostScreen = lazy(() => import("./components/BoostScreen"));
+const AdvertiseScreen = lazy(() => import("./components/AdvertiseScreen"));
 const AnalyticsScreen = lazy(() => import("./components/AnalyticsScreen"));
 
 // ─── Loading spinner for Suspense fallback ────────────────────────────────────
@@ -452,12 +453,13 @@ export default function App() {
             {screen === "onboarding" && <OnboardingScreen />}
             {screen === "about" && <AboutScreen />}
             {screen === "boost" && <BoostScreen />}
+            {screen === "advertise" && <AdvertiseScreen />}
             {screen === "analytics" && <AnalyticsScreen />}
             </Suspense>
           </main>
 
           {/* Bottom Nav — hidden on auth/about/landing screens and fullscreen */}
-          {!["login", "register", "forgot", "reset", "verify-email", "about", "boost", "analytics", "landing"].includes(screen) && user && !fullscreenActive && (
+          {!["login", "register", "forgot", "reset", "verify-email", "about", "boost", "advertise", "analytics", "landing"].includes(screen) && user && !fullscreenActive && (
           <>
             {/* Floating Post peek — visible when nav is hidden (mobile only) */}
             {navHidden && (

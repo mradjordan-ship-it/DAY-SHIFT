@@ -309,6 +309,26 @@ export default function ProfileScreen() {
         </div>
         {user.bio && <p className="text-muted-foreground text-sm leading-snug">{user.bio}</p>}
 
+        {/* Boost & Advertise buttons */}
+        {!isAdmin && (
+        <div className="flex gap-2 mt-3">
+          <Button
+            size="sm"
+            onClick={() => navigate("boost")}
+            className="flex-1 h-9 bg-amber-500 hover:bg-amber-600 text-white"
+          >
+            <Zap size={14} className="mr-1.5" /> Boost Post
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => navigate("advertise")}
+            className="flex-1 h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <Sparkles size={14} className="mr-1.5" /> Advertise
+          </Button>
+        </div>
+        )}
+
         {/* Contact Day Shift */}
         <button
           onClick={() => navigate("support")}
@@ -618,16 +638,6 @@ export default function ProfileScreen() {
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Title</Label>
-              <Input
-                placeholder="Brief title (optional)"
-                value={postForm.title}
-                onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
-                className="bg-secondary border-border"
-              />
-            </div>
-            
-            <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Description</Label>
               <Textarea
                 placeholder="What's this post about?"
@@ -640,19 +650,25 @@ export default function ProfileScreen() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Category</Label>
+                {user?.is_admin ? (
+                  <Input
+                    value={postForm.category}
+                    onChange={(e) => setPostForm({ ...postForm, category: e.target.value })}
+                    placeholder="Type any category..."
+                    className="bg-secondary border-border"
+                  />
+                ) : (
                 <Select onValueChange={(v) => setPostForm({ ...postForm, category: v })} value={postForm.category}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {user?.is_admin && <SelectItem value="general"><Sparkles size={12} className="inline mr-1" /> General</SelectItem>}
-                    {user?.is_admin && <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>}
                     {(user?.role === "worker" || user?.is_admin) && <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>}
                     <SelectItem value="sale"><SaleIcon className="w-3 h-3 inline mr-1" />For Sale</SelectItem>
                     <SelectItem value="event"><EventIcon className="w-3 h-3 inline mr-1" />Event</SelectItem>
-                    <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
                   </SelectContent>
                 </Select>
+                )}
               </div>
               {postForm.category === "sale" && (
                 <div className="space-y-1">

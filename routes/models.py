@@ -82,6 +82,50 @@ TIERS = {
     "premium":   {"name": "Premium",   "price": 150, "duration_days": 14,  "max_boosts": 10, "features": ["Every carousel section", "14-day boost", "Full analytics", "Featured badge"]},
 }
 
+AD_TIERS = {
+    "business": {
+        "name": "Business",
+        "price": 99,
+        "interval": "month",
+        "boosts_per_month": 2,
+        "features": [
+            "Verified business badge",
+            "Business profile (logo, hours, website)",
+            "2 boosted posts per month",
+            "Featured in business directory",
+            "Basic analytics (views, clicks)",
+        ],
+    },
+    "premium": {
+        "name": "Premium",
+        "price": 249,
+        "interval": "month",
+        "boosts_per_month": 5,
+        "features": [
+            "Everything in Business",
+            "5 boosted posts per month",
+            "Banner ad in feed (rotating)",
+            "Priority feed placement",
+            "Full analytics dashboard",
+            "Custom promotional code",
+        ],
+    },
+    "enterprise": {
+        "name": "Enterprise",
+        "price": 499,
+        "interval": "month",
+        "boosts_per_month": -1,  # unlimited
+        "features": [
+            "Everything in Premium",
+            "Unlimited boosted posts",
+            "Dedicated carousel slot",
+            "Sponsored content section",
+            "Bulk job posting API",
+            "Account manager",
+        ],
+    },
+}
+
 AUTO_REPLY = (
     "Thanks for reaching out to Day Shift! 🧡\n\n"
     "We've received your message and our team will get back to you as soon as possible — "

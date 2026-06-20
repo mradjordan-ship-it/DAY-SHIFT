@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Depends, Request
 
 from .deps import get_conn, get_current_user, get_optional_user
-from .models import TIERS, BoostBody
+from .models import TIERS, AD_TIERS, BoostBody
 
 api = APIRouter()
 
@@ -413,3 +413,123 @@ def track_match_analytics(body: dict, current_user=Depends(get_current_user)):
     cur.close()
     conn.close()
     return {"ok": True}
+
+
+# ── Advertising Subscription Routes ──────────────────────────────────────────
+
+@api.get("/advertiser/ad-tiers")
+def list_ad_tiers():
+    """Public tier definitions for advertising subscriptions."""
+    return AD_TIERS
+
+
+@api.get("/advertiser/subscription-status")
+def get_ad_subscription_status(current_user=Depends(get_current_user)):
+    """Check if user has an active advertising subscription."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """SELECT * FROM advertiser_subscriptions WHERE user_id = %s ORDER BY created_at DESC LIMIT 1""",
+        (current_user["id"],),
+    )
+    sub = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not sub:
+        return {"active": False, "tier": None}
+    return {
+        "active": sub.get("tier") in ("business", "premium", "enterprise") and sub.get("status", "active") == "active",
+        "tier": sub.get("tier"),
+        "boosts_per_month": AD_TIERS.get(sub.get("tier", ""), {}).get("boosts_per_month", 0),
+    }
+
+
+@api.post("/advertiser/subscribe")
+def create_ad_subscription(body: dict, request: Request, current_user=Depends(get_current_user)):
+    """Create a Stripe Checkout session for an advertising subscription."""
+    tier = body.get("tier")
+    if tier not in AD_TIERS:
+        raise HTTPException(400, f"Invalid tier. Choose from: {list(AD_TIERS.keys())}")
+
+    tier_info = AD_TIERS[tier]
+    if not os.environ.get("STRIPE_SECRET_KEY"):
+        raise HTTPException(500, "Stripe is not configured")
+    import stripe
+    stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
+
+    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
+    origin = f"https://{custom_domain}" if custom_domain else (request.headers.get("origin") or "https://day-shift.workshop.build")
+
+    # Try to find or create a Stripe price for this tier
+    price_lookup = f"dayshift_ad_{tier}"
+    try:
+        prices = stripe.Price.list(lookup_keys=[price_lookup], active=True)
+        if prices.data:
+            price_id = prices.data[0].id
+        else:
+            product = stripe.Product.create(name=f"Day Shift — {tier_info['name']} Advertising")
+            price = stripe.Price.create(
+                product=product.id,
+                unit_amount=tier_info["price"] * 100,
+                currency="usd",
+                recurring={"interval": "month"},
+                lookup_key=price_lookup,
+            )
+            price_id = price.id
+    except Exception:
+        price_id = None
+
+    # Record pending subscription
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """INSERT INTO advertiser_subscriptions (user_id, tier, status)
+           VALUES (%s, %s, 'pending') RETURNING *""",
+        (current_user["id"], tier),
+    )
+    sub = dict(cur.fetchone())
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    try:
+        session_params = {
+            "mode": "subscription",
+            "line_items": ([{"price": price_id, "quantity": 1}] if price_id else [{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": f"Day Shift — {tier_info['name']} Advertising"},
+                    "unit_amount": tier_info["price"] * 100,
+                    "recurring": {"interval": "month"},
+                },
+                "quantity": 1,
+            }]),
+            "success_url": f"{origin}/advertise?success=1&session_id={{CHECKOUT_SESSION_ID}}",
+            "cancel_url": f"{origin}/advertise?canceled=1",
+            "client_reference_id": str(sub["id"]),
+            "metadata": {"user_id": str(current_user["id"]), "tier": tier},
+        }
+        checkout_session = stripe.checkout.Session.create(**session_params)
+    except Exception as e:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("UPDATE advertiser_subscriptions SET status = 'failed' WHERE id = %s", (sub["id"],))
+        conn.commit()
+        cur.close()
+        conn.close()
+        raise HTTPException(500, f"Stripe checkout error: {str(e)}")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE advertiser_subscriptions SET stripe_session_id = %s WHERE id = %s",
+        (checkout_session.id, sub["id"]),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "stripe_checkout_url": checkout_session.url,
+        "stripe_session_id": checkout_session.id,
+    }

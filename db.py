@@ -224,17 +224,20 @@ def init_db():
         -- Advertiser subscriptions / tiers
         CREATE TABLE IF NOT EXISTS advertiser_subscriptions (
             id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) UNIQUE,
-            tier TEXT NOT NULL DEFAULT 'free',  -- 'free' | 'boost' | 'spotlight' | 'premium'
+            user_id INTEGER REFERENCES users(id),
+            tier TEXT NOT NULL DEFAULT 'free',  -- 'free' | 'boost' | 'spotlight' | 'premium' | 'business' | 'enterprise'
             start_date TIMESTAMPTZ DEFAULT NOW(),
             end_date TIMESTAMPTZ,
             boosts_used INTEGER DEFAULT 0,
             boosts_remaining INTEGER DEFAULT 0,
             free_boost_used BOOLEAN DEFAULT FALSE,
             payment_method TEXT DEFAULT 'stripe',
-            status TEXT DEFAULT 'active',  -- 'active' | 'expired' | 'cancelled'
+            status TEXT DEFAULT 'active',  -- 'active' | 'expired' | 'cancelled' | 'pending' | 'failed'
+            stripe_session_id TEXT DEFAULT '',
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
+        ALTER TABLE advertiser_subscriptions ADD COLUMN IF NOT EXISTS stripe_session_id TEXT DEFAULT '';
+        ALTER TABLE advertiser_subscriptions DROP CONSTRAINT IF EXISTS advertiser_subscriptions_user_id_key;
 
         -- Individual post boosts
         CREATE TABLE IF NOT EXISTS post_boosts (

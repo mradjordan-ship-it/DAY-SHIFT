@@ -22,8 +22,8 @@ export default function PostScreen() {
   const { navigate, params: navParams } = useNav();
   const isAdmin = user?.is_admin ?? false;
   const [step, setStep] = useState<Step>("create");
-  const [postType, setPostType] = useState<"worker" | "employer">(
-    user?.role === "employer" ? "employer" : user?.role === "admin" ? "employer" : "worker"
+  const [postType, setPostType] = useState<"worker" | "employer" | "admin">(
+    user?.role === "employer" ? "employer" : user?.is_admin ? "admin" : "worker"
   );
   const [showRecorder, setShowRecorder] = useState(false);
 
@@ -49,7 +49,7 @@ export default function PostScreen() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   // Default category based on role: crew → "crew", employer → "sale", admin → "general"
-  const defaultCategory = isAdmin ? "general" : postType === "worker" ? "crew" : "sale";
+  const defaultCategory = isAdmin ? "Admin" : postType === "worker" ? "crew" : "sale";
 
   const [form, setForm] = useState({
     title: "",
@@ -604,34 +604,29 @@ export default function PostScreen() {
               />
             </div>
 
-            {/* Title */}
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Title</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-                placeholder={postType === "worker" ? "Experienced Line Cook — Available Now" : "Need Sous Chef for Friday Dinner Service"}
-                className="bg-secondary border-border h-8 text-sm"
-              />
-            </div>
-
             {/* Post Category + Price + Event fields */}
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-0.5">
                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
+                {isAdmin ? (
+                  <Input
+                    value={form.category}
+                    onChange={(e) => set("category", e.target.value)}
+                    placeholder="Type any category..."
+                    className="bg-secondary border-border h-8 text-sm"
+                  />
+                ) : (
                 <Select onValueChange={(v) => set("category", v)} value={form.category}>
                   <SelectTrigger className="bg-secondary border-border h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {isAdmin && <SelectItem value="general"><Sparkles size={12} className="inline mr-1" /> General</SelectItem>}
-                    {isAdmin && <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>}
                     {(postType === "worker" || isAdmin) && <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>}
                     <SelectItem value="sale"><Tag size={12} className="inline mr-1" /> For Sale</SelectItem>
                     <SelectItem value="event"><Calendar size={12} className="inline mr-1" /> Event</SelectItem>
-                    <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
                   </SelectContent>
                 </Select>
+                )}
               </div>
               {form.category === "sale" && (
                 <div className="space-y-0.5">
