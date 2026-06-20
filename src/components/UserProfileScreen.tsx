@@ -3,7 +3,7 @@ import type { User, Video, Review } from "../types";
 import { useAuth, useNav } from "../App";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Play, ArrowLeft, MessageCircle, Flag, Ban, ShieldCheck, Video as VideoIcon } from "lucide-react";
+import { Star, Play, ArrowLeft, MessageCircle, Flag, Ban, ShieldCheck, Video as VideoIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { RoleIcon } from "./Icons";
 import { trackEvent } from "../lib/analytics";
 
@@ -19,6 +19,7 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
   const [reportComment, setReportComment] = useState("");
   const [reportSent, setReportSent] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [expandedPost, setExpandedPost] = useState<number | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -259,37 +260,72 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
           <div className="space-y-2">
             {videos.map((video) => (
               <div key={video.id} className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="p-3">
-                  <div className="flex items-start gap-3">
+                <button
+                  onClick={() => setExpandedPost(expandedPost === video.id ? null : video.id)}
+                  className="w-full p-3 flex items-center justify-between hover:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
                     {video.image_url ? (
-                      <img src={video.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
+                      <img src={video.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-black flex-shrink-0" />
                     ) : video.video_url ? (
-                      <div className="w-16 h-16 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
-                        <VideoIcon size={20} />
+                      <div className="w-10 h-10 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                        <VideoIcon size={16} />
                       </div>
                     ) : (
-                      <div className="w-16 h-16 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[10px]">
+                      <div className="w-10 h-10 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[9px]">
                         Text
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="text-left min-w-0">
+                      <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground text-sm truncate">{video.title || "Untitled"}</span>
                         {video.category && (
                           <Badge className={`text-[9px] border-0 ${video.type === "worker" ? "bg-orange-500/20 text-orange-300" : "bg-blue-500/20 text-blue-300"}`}>{video.category}</Badge>
                         )}
                       </div>
-                      {video.description && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{video.description}</p>
+                      <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  {expandedPost === video.id ? (
+                    <ChevronUp size={16} className="text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronDown size={16} className="text-muted-foreground flex-shrink-0" />
+                  )}
+                </button>
+
+                {expandedPost === video.id && (
+                  <div className="border-t border-border p-3 bg-secondary/20">
+                    <div className="flex items-start gap-3">
+                      {video.image_url ? (
+                        <img src={video.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
+                      ) : video.video_url ? (
+                        <div className="w-16 h-16 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
+                          <VideoIcon size={20} />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[10px]">
+                          Text
+                        </div>
                       )}
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {video.location && <span className="text-[10px] text-muted-foreground">📍 {video.location}</span>}
-                        {video.pay_rate && <span className="text-[10px] text-muted-foreground">💰 {video.pay_rate}</span>}
-                        <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-foreground text-sm truncate">{video.title || "Untitled"}</span>
+                          {video.category && (
+                            <Badge className={`text-[9px] border-0 ${video.type === "worker" ? "bg-orange-500/20 text-orange-300" : "bg-blue-500/20 text-blue-300"}`}>{video.category}</Badge>
+                          )}
+                        </div>
+                        {video.description && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">{video.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {video.location && <span className="text-[10px] text-muted-foreground">📍 {video.location}</span>}
+                          {video.pay_rate && <span className="text-[10px] text-muted-foreground">💰 {video.pay_rate}</span>}
+                          <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
