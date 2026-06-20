@@ -308,8 +308,20 @@ def customer_portal(request: Request, current_user=Depends(get_current_user)):
 
 @api.get("/advertiser/analytics")
 def get_analytics(current_user=Depends(get_current_user)):
+    # Gate: only premium/enterprise advertisers get full analytics
     conn = get_conn()
     cur = conn.cursor()
+    cur.execute(
+        """SELECT tier, status FROM advertiser_subscriptions
+           WHERE user_id = %s AND status = 'active'
+           ORDER BY created_at DESC LIMIT 1""",
+        (current_user["id"],),
+    )
+    sub = cur.fetchone()
+    if not sub or sub["tier"] not in ("premium", "enterprise"):
+        cur.close()
+        conn.close()
+        raise HTTPException(403, "Full analytics requires a Premium or Enterprise advertising subscription")
     uid = current_user["id"]
     # Overall stats
     cur.execute(

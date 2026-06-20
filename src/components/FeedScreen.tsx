@@ -130,16 +130,24 @@ export default function FeedScreen() {
           
           if (videoList.length > 0) {
             const sponsoredPosts = videoList.filter((v: Video) => v.is_sponsored || v.category === "sponsored");
-            const regularPosts = videoList.filter((v: Video) => !v.is_sponsored && v.category !== "sponsored");
-            
+            const boostedPosts = videoList.filter((v: Video) => v.boost_tier === "spotlight" || v.boost_tier === "premium");
+            const regularPosts = videoList.filter((v: Video) => !v.is_sponsored && v.category !== "sponsored" && !v.boost_tier);
+
             const carouselsList: Video[][] = [];
-            // Create enough carousels to sprinkle through the feed
             const numCarousels = Math.max(3, Math.ceil(videoList.length / 6));
             for (let i = 0; i < numCarousels; i++) {
+              // Priority: spotlight/premium boosted posts first, then fill with random regular posts
               const shuffled = [...regularPosts].sort(() => 0.5 - Math.random());
-              // Deduplicate by author so same person doesn't appear twice
               const seenAuthors = new Set<number>();
               const uniqueByAuthor: Video[] = [];
+              // Add spotlight/premium boosted posts first (deduped by author)
+              for (const v of boostedPosts) {
+                if (!seenAuthors.has(v.user_id)) {
+                  seenAuthors.add(v.user_id);
+                  uniqueByAuthor.push(v);
+                }
+              }
+              // Fill remaining slots with random regular posts
               for (const v of shuffled) {
                 if (!seenAuthors.has(v.user_id)) {
                   seenAuthors.add(v.user_id);
@@ -869,6 +877,21 @@ function VideoCard({
               ✦ Sponsored
             </Badge>
           )}
+          {video.boost_tier === "premium" && (
+            <Badge className="font-bold border backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 border-violet-400/40 bg-violet-500/20 text-violet-300">
+              👑 Featured
+            </Badge>
+          )}
+          {video.boost_tier === "spotlight" && (
+            <Badge className="font-bold border backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 border-sky-400/40 bg-sky-500/20 text-sky-300">
+              ⭐ Spotlight
+            </Badge>
+          )}
+          {video.boost_tier === "boost" && (
+            <Badge className="font-bold border backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 border-emerald-400/40 bg-emerald-500/20 text-emerald-300">
+              🔥 Boosted
+            </Badge>
+          )}
           {video.category !== "sponsored" && video.type !== "admin" && (
             <Badge
               className={cn("font-semibold border-0 backdrop-blur text-[10px] md:text-xs px-2 md:px-3 py-0.5 md:py-1 flex items-center gap-1",
@@ -906,6 +929,21 @@ function VideoCard({
           {(video.is_sponsored || video.category === "sponsored") && (
             <Badge className="font-bold border backdrop-blur text-[8px] px-1.5 py-0 border-amber-400/25 bg-amber-500/10 text-amber-300">
               ✦ Sponsored
+            </Badge>
+          )}
+          {video.boost_tier === "premium" && (
+            <Badge className="font-bold border backdrop-blur text-[8px] px-1.5 py-0 border-violet-400/25 bg-violet-500/10 text-violet-300">
+              👑 Featured
+            </Badge>
+          )}
+          {video.boost_tier === "spotlight" && (
+            <Badge className="font-bold border backdrop-blur text-[8px] px-1.5 py-0 border-sky-400/25 bg-sky-500/10 text-sky-300">
+              ⭐ Spotlight
+            </Badge>
+          )}
+          {video.boost_tier === "boost" && (
+            <Badge className="font-bold border backdrop-blur text-[8px] px-1.5 py-0 border-emerald-400/25 bg-emerald-500/10 text-emerald-300">
+              🔥 Boosted
             </Badge>
           )}
           {video.category !== "sponsored" && video.type !== "admin" && (

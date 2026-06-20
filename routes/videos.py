@@ -232,7 +232,7 @@ def list_videos(
         videos = videos[:limit]
 
     # Fetch active boosted posts and merge at the top (for the main "all" feed)
-    if not type and (not category or category == "all") and not q and not user_id and not cursor:
+    if not type and (not category or category == "all") and not q and not user_id:
         cur.execute("""
             SELECT v.*, u.name as author_name, u.avatar_url as author_avatar, u.avg_rating as author_rating,
                    u.role as author_role, u.is_admin as author_is_admin, u.is_advertiser as author_is_advertiser,
@@ -259,9 +259,13 @@ def list_videos(
         for p in videos:
             if p.get("created_at") and not isinstance(p.get("created_at"), str):
                 p["created_at"] = p["created_at"].isoformat()
-        # Merge all posts and sort by created_at DESC so newest always appears first
+        # Tier weight for sorting: boosted posts pinned to top, then regular by created_at
+        tier_weight = {"premium": 3, "spotlight": 2, "boost": 1}
+        def sort_key(p):
+            tw = tier_weight.get(p.get("boost_tier", ""), 0)
+            return (tw, p.get("created_at") or "")
         all_posts = sponsored + boosted + videos
-        all_posts.sort(key=lambda p: p.get("created_at") or "", reverse=True)
+        all_posts.sort(key=sort_key, reverse=True)
         videos = all_posts
 
     for v in videos:

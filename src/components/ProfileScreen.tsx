@@ -346,19 +346,6 @@ export default function ProfileScreen() {
           </div>
         </button>
 
-        {/* Tip Jar */}
-        <button
-          onClick={() => navigate("sponsor")}
-          className="w-full mt-2 p-3 bg-gradient-to-r from-amber-500/10 to-amber-900/10 border border-amber-500/20 rounded-xl flex items-center gap-3 hover:from-amber-500/20 hover:to-amber-900/20 transition-colors text-left"
-        >
-          <div className="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-            <DollarSign size={16} className="text-amber-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-foreground font-semibold text-sm">Support Day Shift ☕</p>
-          </div>
-        </button>
-
         {/* Change Password */}
         <button
           onClick={() => { setPwForm({ current: "", next: "", confirm: "" }); setPwError(""); setPwSuccess(false); setPwOpen(true); }}

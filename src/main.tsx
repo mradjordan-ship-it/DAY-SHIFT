@@ -27,7 +27,7 @@ createRoot(document.getElementById("root")!).render(
 );
 
 // Register PWA service worker
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
+if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {
       // SW registration failed — app still works fine

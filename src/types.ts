@@ -58,6 +58,7 @@ export interface Video {
   author_is_advertiser: boolean;
   liked_by_me: boolean;
   is_sponsored?: boolean;
+  boost_tier?: "boost" | "spotlight" | "premium";
 }
 
 export interface Match {

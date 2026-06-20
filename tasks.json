@@ -1,17 +1,37 @@
 [
   {
-    "content": "Add admin PATCH /admin/videos/{id} endpoint for editing any post",
-    "id": "1",
+    "content": "Fix notifications: remove import.meta.env.PROD guard in main.tsx",
+    "id": "notif-1",
     "status": "completed"
   },
   {
-    "content": "Add image preview, description, edit button + dialog to AdminScreen VideosTab",
-    "id": "2",
+    "content": "Fix feed sort: pin boosted posts to top by tier weight instead of re-sorting by created_at",
+    "id": "boost-1",
     "status": "completed"
   },
   {
-    "content": "Test admin post management",
-    "id": "3",
+    "content": "Show boost badges in FeedScreen for user-purchased boosts (spotlight/premium tiers)",
+    "id": "boost-2",
     "status": "completed"
+  },
+  {
+    "content": "Priority carousel placement for spotlight/premium boosted posts",
+    "id": "boost-3",
+    "status": "completed"
+  },
+  {
+    "content": "Gate analytics endpoint to premium/enterprise advertiser tier only",
+    "id": "boost-4",
+    "status": "completed"
+  },
+  {
+    "content": "Load boosted posts on infinite scroll (not just first page)",
+    "id": "boost-5",
+    "status": "completed"
+  },
+  {
+    "content": "Build frontend, commit all changes",
+    "id": "build",
+    "status": "in_progress"
   }
 ]
