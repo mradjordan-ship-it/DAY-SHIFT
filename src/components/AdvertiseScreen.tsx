@@ -102,7 +102,7 @@ export default function AdvertiseScreen() {
       });
       const data = await res.json();
       if (data.stripe_checkout_url) {
-        window.location.href = data.stripe_checkout_url;
+        window.open(data.stripe_checkout_url, "_blank");
       } else {
         setError(data.detail || "Failed to start checkout");
       }
