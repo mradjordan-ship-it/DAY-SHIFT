@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TermsContent, PrivacyContent } from "./LegalContent";
-import { Camera, Building2, X, Eye, EyeOff, HardHat, Megaphone } from "lucide-react";
+import { Camera, Building2, X, Eye, EyeOff, HardHat, Megaphone, Ban } from "lucide-react";
 import { trackEvent } from "../lib/analytics";
 
 export default function AuthScreen({
@@ -48,6 +48,10 @@ export default function AuthScreen({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [suspendedInfo, setSuspendedInfo] = useState<{ message: string; suspension_reason: string; has_pending_appeal: boolean } | null>(null);
+  const [appealReason, setAppealReason] = useState("");
+  const [appealSubmitted, setAppealSubmitted] = useState(false);
+  const [appealLoading, setAppealLoading] = useState(false);
 
   // Signup gate
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -146,6 +150,7 @@ export default function AuthScreen({
     setLoading(true);
     setError("");
     setSuccessMsg("");
+    setSuspendedInfo(null);
 
     try {
       if (mode === "forgot") {
@@ -179,7 +184,13 @@ export default function AuthScreen({
           body: JSON.stringify({ email: form.email, password: form.password }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Something went wrong");
+        if (!res.ok) {
+          if (res.status === 403 && typeof data.detail === "object" && data.detail?.message?.includes("suspended")) {
+            setSuspendedInfo(data.detail);
+            return;
+          }
+          throw new Error(typeof data.detail === "string" ? data.detail : "Something went wrong");
+        }
         const u: User = data.user;
         login(data.token, u);
         trackEvent("user_login", { role: u.role, method: "email" });
@@ -232,6 +243,24 @@ export default function AuthScreen({
       setLoading(false);
     }
   }
+
+  const handleSubmitAppeal = async () => {
+    if (!appealReason.trim() || appealReason.length < 20) return;
+    setAppealLoading(true);
+    try {
+      const res = await fetch("/api/appeals/guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, password: form.password, reason: appealReason }),
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || "Failed to submit appeal");
+      setAppealSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit appeal");
+    } finally {
+      setAppealLoading(false);
+    }
+  };
 
   const canSubmitRegister =
     !!imageFile && termsAccepted && privacyAccepted &&
@@ -440,6 +469,55 @@ export default function AuthScreen({
             {error && (
               <div className="text-destructive text-sm text-center bg-destructive/10 rounded-lg py-2 px-3">
                 {error}
+              </div>
+            )}
+
+            {suspendedInfo && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Ban size={18} className="text-destructive shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-destructive">Account Suspended</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{suspendedInfo.suspension_reason}</p>
+                  </div>
+                </div>
+                {suspendedInfo.has_pending_appeal ? (
+                  <p className="text-xs text-muted-foreground bg-secondary/50 rounded-lg p-2 text-center">
+                    You already have a pending appeal. We'll review it soon.
+                  </p>
+                ) : appealSubmitted ? (
+                  <p className="text-xs text-green-500 bg-green-500/10 rounded-lg p-2 text-center">
+                    Appeal submitted. We'll review it and get back to you via email.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      If you believe this is an error, you may submit one appeal for review.
+                    </p>
+                    <textarea
+                      placeholder="Explain why you believe this suspension is incorrect... (min 20 characters)"
+                      value={appealReason}
+                      onChange={(e) => setAppealReason(e.target.value)}
+                      rows={3}
+                      className="w-full bg-secondary border-border rounded-lg text-xs resize-none p-2.5"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={appealLoading || appealReason.length < 20}
+                      onClick={handleSubmitAppeal}
+                      className="w-full h-9 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      {appealLoading ? "Submitting..." : "Submit Appeal"}
+                    </Button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSuspendedInfo(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground text-center w-full"
+                >
+                  Back to login
+                </button>
               </div>
             )}
 

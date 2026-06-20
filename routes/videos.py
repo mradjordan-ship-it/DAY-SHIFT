@@ -330,6 +330,18 @@ def create_video(
         )
         video = dict(cur.fetchone())
 
+        # ── Content moderation scan ──────────────────────────────────────────
+        from .moderation import moderate_and_flag
+        scan_text = f"{title or ''} {description or ''}"
+        mod_result = moderate_and_flag("video", video["id"], scan_text)
+        if mod_result["blocked"]:
+            # Remove the video immediately
+            cur.execute("DELETE FROM videos WHERE id = %s", (video["id"],))
+            conn.commit()
+            cur.close()
+            conn.close()
+            raise HTTPException(422, f"Your post was rejected. Content violation: {mod_result['blocked_term']}")
+
         # Auto-flag: if account is less than 1 hour old and this is their first video,
         # create an auto-flag report for admin review
         from datetime import timezone

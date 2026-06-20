@@ -107,6 +107,15 @@ def update_profile(body: ProfileUpdateBody, current_user=Depends(get_current_use
         updates["email"] = body.email
 
     if updates:
+        # ── Content moderation on bio ────────────────────────────────────────
+        if body.bio is not None:
+            from .moderation import should_block_text
+            blocked, blocked_term = should_block_text(body.bio)
+            if blocked:
+                cur.close()
+                conn.close()
+                raise HTTPException(422, f"Bio rejected. Content violation: {blocked_term}")
+
         set_clause = ", ".join(f"{k} = %s" for k in updates)
         cur.execute(
             f"UPDATE users SET {set_clause} WHERE id = %s RETURNING *",

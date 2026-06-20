@@ -142,7 +142,7 @@ interface AdminReport {
   created_at: string;
 }
 
-type Tab = "overview" | "users" | "videos" | "matches" | "reports" | "sponsors" | "tips" | "scheduled" | "boosts";
+type Tab = "overview" | "users" | "videos" | "matches" | "reports" | "appeals" | "content-flags" | "tips" | "scheduled" | "boosts";
 
 export default function AdminScreen() {
   const { user, token } = useAuth();
@@ -156,6 +156,8 @@ export default function AdminScreen() {
   const [sponsorContacts, setSponsorContacts] = useState<any[]>([]);
   const [tips, setTips] = useState<any[]>([]);
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
+  const [appeals, setAppeals] = useState<any[]>([]);
+  const [contentFlags, setContentFlags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<number | null>(null);
   const [editingVideo, setEditingVideo] = useState<AdminVideo | null>(null);
@@ -200,6 +202,14 @@ export default function AdminScreen() {
         if (spoRes.ok) setSponsorContacts(await spoRes.json());
         if (tipsRes.ok) setTips(await tipsRes.json());
         if (schedRes.ok) setScheduledPosts(await schedRes.json());
+
+        // Appeals and content flags
+        const [appealsRes, flagsRes] = await Promise.all([
+          fetch("/api/admin/appeals", { headers }),
+          fetch("/api/admin/content-flags", { headers }),
+        ]);
+        if (appealsRes.ok) setAppeals(await appealsRes.json());
+        if (flagsRes.ok) setContentFlags(await flagsRes.json());
       } finally {
         setLoading(false);
       }
@@ -322,6 +332,8 @@ export default function AdminScreen() {
     { key: "videos", label: `Videos (${videos.length})`, icon: <Video size={14} /> },
     { key: "matches", label: `Matches (${matches.length})`, icon: <Handshake size={14} /> },
     { key: "reports", label: `Reports${openReports > 0 ? ` (${openReports})` : ""}`, icon: <Flag size={14} /> },
+    { key: "appeals", label: `Appeals${appeals.filter((a) => a.status === "pending").length > 0 ? ` (${appeals.filter((a) => a.status === "pending").length})` : ""}`, icon: <MessageCircle size={14} /> },
+    { key: "content-flags", label: `Flags${contentFlags.length > 0 ? ` (${contentFlags.length})` : ""}`, icon: <AlertTriangle size={14} /> },
     { key: "tips", label: `Tips${tips.length > 0 ? ` (${tips.length})` : ""}`, icon: <DollarSign size={14} /> },
     { key: "scheduled", label: `Scheduled${scheduledPosts.length > 0 ? ` (${scheduledPosts.length})` : ""}`, icon: <Clock size={14} /> },
     { key: "boosts", label: "Boosts", icon: <Zap size={14} /> },
@@ -393,6 +405,26 @@ export default function AdminScreen() {
         )}
         {tab === "tips" && <TipsTab tips={tips} onRefresh={fetchSupport} />}
         {tab === "boosts" && <BoostsTab token={token!} />}
+        {tab === "appeals" && (
+          <AppealsTab
+            appeals={appeals}
+            token={token!}
+            onReviewed={() => {
+              fetch("/api/admin/appeals", { headers: { Authorization: `Bearer ${token}` } })
+                .then((r) => r.ok && r.json().then(setAppeals));
+            }}
+          />
+        )}
+        {tab === "content-flags" && (
+          <ContentFlagsTab
+            flags={contentFlags}
+            token={token!}
+            onResolved={() => {
+              fetch("/api/admin/content-flags", { headers: { Authorization: `Bearer ${token}` } })
+                .then((r) => r.ok && r.json().then(setContentFlags));
+            }}
+          />
+        )}
       </div>
 
       {/* Edit Post Dialog */}
@@ -1593,6 +1625,183 @@ function BoostsTab({ token }: { token: string }) {
         <div className="text-center py-12">
           <Zap size={32} className="text-muted-foreground mx-auto mb-3" />
           <p className="text-muted-foreground text-sm">No boosts yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Appeals Tab ──────────────────────────────────────────────────────────────
+
+function AppealsTab({ appeals, token, onReviewed }: { appeals: any[]; token: string; onReviewed: () => void }) {
+  const [reviewing, setReviewing] = useState<number | null>(null);
+  const [response, setResponse] = useState("");
+
+  const handleReview = async (appealId: number, action: "approve" | "deny") => {
+    setReviewing(appealId);
+    const res = await fetch(`/api/admin/appeals/${appealId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action, response: response || undefined }),
+    });
+    if (res.ok) {
+      onReviewed();
+      setResponse("");
+    }
+    setReviewing(null);
+  };
+
+  const pending = appeals.filter((a) => a.status === "pending");
+  const resolved = appeals.filter((a) => a.status !== "pending");
+
+  return (
+    <div className="space-y-4">
+      {pending.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5">
+            <AlertTriangle size={14} className="text-yellow-400" /> Pending Appeals ({pending.length})
+          </h3>
+          {pending.map((a) => (
+            <div key={a.id} className="bg-card border border-border rounded-xl p-4 mb-3">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {a.user_avatar ? (
+                    <img src={a.user_avatar} className="w-8 h-8 rounded-full object-cover" alt="" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+                      <User size={14} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{a.user_name}</p>
+                    <p className="text-[10px] text-muted-foreground">{a.user_email}</p>
+                  </div>
+                </div>
+                <Badge className="text-[10px] border-0 bg-yellow-500/20 text-yellow-400">{a.strike_count} strikes</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mb-1">
+                <span className="text-foreground font-medium">Reason:</span> {a.suspension_reason}
+              </p>
+              <div className="bg-secondary/50 rounded-lg p-2.5 mb-3">
+                <p className="text-xs text-foreground italic">"{a.reason}"</p>
+              </div>
+              <Textarea
+                placeholder="Admin response (optional)..."
+                value={response}
+                onChange={(e) => setResponse(e.target.value)}
+                rows={2}
+                className="bg-secondary border-border text-xs resize-none mb-2"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={reviewing === a.id}
+                  onClick={() => handleReview(a.id, "approve")}
+                  className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <CheckCircle2 size={12} className="mr-1" /> Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={reviewing === a.id}
+                  onClick={() => handleReview(a.id, "deny")}
+                  className="h-8 text-xs"
+                >
+                  <XCircle size={12} className="mr-1" /> Deny
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Submitted {new Date(a.created_at).toLocaleDateString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {resolved.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5">
+            <CheckCircle2 size={14} className="text-muted-foreground" /> Resolved ({resolved.length})
+          </h3>
+          {resolved.slice(0, 20).map((a) => (
+            <div key={a.id} className="bg-card border border-border rounded-xl p-3 mb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-foreground">{a.user_name}</p>
+                  <p className="text-[10px] text-muted-foreground">{a.status} — {new Date(a.created_at).toLocaleDateString()}</p>
+                </div>
+                <Badge className={`text-[10px] border-0 ${a.status === "approved" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"}`}>
+                  {a.status}
+                </Badge>
+              </div>
+              {a.admin_response && (
+                <p className="text-[10px] text-muted-foreground mt-1 italic">"{a.admin_response}"</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {appeals.length === 0 && (
+        <div className="text-center py-12">
+          <MessageCircle size={32} className="text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No appeals</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Content Flags Tab ───────────────────────────────────────────────────────
+
+function ContentFlagsTab({ flags, token, onResolved }: { flags: any[]; token: string; onResolved: () => void }) {
+  const handleResolve = async (flagId: number, action: "dismiss" | "escalate") => {
+    const res = await fetch(`/api/admin/content-flags/${flagId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    if (res.ok) onResolved();
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+        <Flag size={14} className="text-primary" /> Unresolved Flags ({flags.length})
+      </h3>
+      {flags.map((f) => (
+        <div key={f.id} className="bg-card border border-border rounded-xl p-3">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Badge className="text-[10px] border-0 bg-secondary text-muted-foreground">{f.target_type}</Badge>
+              <p className="text-xs font-semibold text-foreground">{f.target_name}</p>
+            </div>
+            <Badge className="text-[10px] border-0 bg-red-500/20 text-red-400">"{f.matched_term}"</Badge>
+          </div>
+          {f.target_detail && (
+            <p className="text-[10px] text-muted-foreground truncate mb-2">{f.target_detail}</p>
+          )}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-muted-foreground">{new Date(f.created_at).toLocaleDateString()}</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => handleResolve(f.id, "dismiss")} className="h-7 text-[10px] text-muted-foreground">
+                Dismiss
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => handleResolve(f.id, "escalate")} className="h-7 text-[10px]">
+                <Ban size={10} className="mr-1" /> Issue Strike
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {flags.length === 0 && (
+        <div className="text-center py-12">
+          <Shield size={32} className="text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">No unresolved flags</p>
         </div>
       )}
     </div>

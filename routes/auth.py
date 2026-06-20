@@ -205,13 +205,123 @@ def login(request: Request, body: LoginBody):
         raise HTTPException(401, "Invalid email or password")
 
     if user["is_suspended"]:
-        raise HTTPException(403, f"Account suspended: {user['suspension_reason'] or 'Violation of community guidelines'}")
+        # Check if suspension expired
+        if user.get("suspension_expires_at") and user["suspension_expires_at"] < datetime.now(timezone.utc):
+            conn2 = get_conn()
+            cur2 = conn2.cursor()
+            cur2.execute(
+                "UPDATE users SET is_suspended=FALSE, suspension_reason=NULL, suspension_expires_at=NULL WHERE id=%s",
+                (user["id"],),
+            )
+            conn2.commit()
+            cur2.close()
+            conn2.close()
+            # Refetch
+            conn3 = get_conn()
+            cur3 = conn3.cursor()
+            cur3.execute("SELECT * FROM users WHERE id = %s", (user["id"],))
+            user = cur3.fetchone()
+            cur3.close()
+            conn3.close()
+        else:
+            # Include appeal info so frontend can show appeal option
+            appeal = None
+            try:
+                conn2 = get_conn()
+                cur2 = conn2.cursor()
+                cur2.execute(
+                    "SELECT id, status FROM appeals WHERE user_id=%s ORDER BY created_at DESC LIMIT 1",
+                    (user["id"],),
+                )
+                app_row = cur2.fetchone()
+                if app_row:
+                    appeal = {"id": app_row["id"], "status": app_row["status"]}
+                cur2.close()
+                conn2.close()
+            except Exception:
+                pass
+            raise HTTPException(403, detail={
+                "message": f"Account suspended: {user['suspension_reason'] or 'Violation of community guidelines'}",
+                "suspension_reason": user["suspension_reason"] or "",
+                "has_pending_appeal": appeal and appeal["status"] == "pending",
+            })
 
     token = create_token(user["id"])
     user = dict(user)
     for f in ("password_hash", "reset_token", "reset_token_expires", "email_verify_token"):
         user.pop(f, None)
     return {"token": token, "user": user}
+
+
+@api.post("/appeals/guest")
+@limiter.limit("3/minute")
+def guest_appeal(request: Request, body: dict):
+    """Allow a suspended user to submit an appeal using email/password (no JWT needed)."""
+    from .deps import verify_password
+    email = (body.get("email") or "").strip()
+    password = body.get("password", "")
+    reason = (body.get("reason") or "").strip()
+
+    if not email or not password:
+        raise HTTPException(400, "Email and password are required")
+    if len(reason) < 20:
+        raise HTTPException(400, "Please provide more detail (at least 20 characters)")
+    if len(reason) > 2000:
+        raise HTTPException(400, "Appeal too long (max 2000 characters)")
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not user or not verify_password(password, user["password_hash"]):
+        raise HTTPException(401, "Invalid email or password")
+    if not user["is_suspended"]:
+        raise HTTPException(400, "Account is not suspended")
+
+    # Now submit appeal (reuse the regular endpoint logic)
+    from .deps import get_conn
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM appeals WHERE user_id=%s AND status='pending'", (user["id"],))
+        if cur.fetchone():
+            raise HTTPException(400, "You already have a pending appeal")
+
+        cur.execute(
+            """INSERT INTO appeals (user_id, reason) VALUES (%s, %s) RETURNING *""",
+            (user["id"], reason),
+        )
+        appeal = dict(cur.fetchone())
+        conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, "Internal error")
+    finally:
+        cur.close()
+        conn.close()
+
+    # Notify admins
+    try:
+        from .push import send_push_to_users
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE is_admin = TRUE")
+        admin_ids = [r["id"] for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        if admin_ids:
+            send_push_to_users(admin_ids, "New Appeal", f"Appeal from {user['name']}", "/admin")
+    except Exception:
+        pass
+
+    if appeal.get("created_at"):
+        appeal["created_at"] = appeal["created_at"].isoformat()
+    return appeal
 
 
 @api.post("/auth/forgot-password")

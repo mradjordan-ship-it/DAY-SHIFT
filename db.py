@@ -65,6 +65,52 @@ def init_db():
         ALTER TABLE users ADD COLUMN IF NOT EXISTS hours TEXT DEFAULT '';
         ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_expires_at TIMESTAMPTZ;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS strike_count INTEGER DEFAULT 0;
+
+        CREATE TABLE IF NOT EXISTS strikes (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            reason TEXT NOT NULL,
+            report_id INTEGER,
+            issued_by INTEGER REFERENCES users(id),  -- admin who issued, or NULL for auto
+            strike_level INTEGER DEFAULT 1,  -- 1st, 2nd, 3rd strike etc.
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_strikes_user ON strikes(user_id);
+
+        CREATE TABLE IF NOT EXISTS appeals (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            reason TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',  -- 'pending' | 'approved' | 'denied'
+            admin_response TEXT,
+            reviewed_by INTEGER REFERENCES users(id),
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            reviewed_at TIMESTAMPTZ
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_appeals_user ON appeals(user_id);
+
+        CREATE TABLE IF NOT EXISTS content_flags (
+            id SERIAL PRIMARY KEY,
+            target_type TEXT NOT NULL,  -- 'video' | 'user'
+            target_id INTEGER NOT NULL,
+            flag_type TEXT NOT NULL,  -- 'keyword' | 'ai_moderation'
+            matched_term TEXT,
+            auto_resolved BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_content_flags_target ON content_flags(target_type, target_id);
+
+        CREATE TABLE IF NOT EXISTS moderation_keywords (
+            id SERIAL PRIMARY KEY,
+            keyword TEXT NOT NULL UNIQUE,
+            severity TEXT DEFAULT 'warn',  -- 'warn' | 'block' | 'flag'
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
 
         CREATE TABLE IF NOT EXISTS videos (
             id SERIAL PRIMARY KEY,
@@ -341,6 +387,35 @@ def init_db():
     """)
 
     conn.commit()
+
+    # ── Seed moderation keywords if empty ──
+    cur.execute("SELECT COUNT(*) FROM moderation_keywords")
+    if cur.fetchone()["count"] == 0:
+        keywords = [
+            # Severity: block — auto-reject and flag
+            (k, "block") for k in [
+                "escort", "onlyfans", "nudes", "drug dealer", "buy drugs",
+                "kill yourself", "doxx", "child abuse", "pedo",
+            ]
+        ] + [
+            # Severity: flag — create content_flag for admin review
+            (k, "flag") for k in [
+                "cash only", "under the table", "no taxes", "off the books",
+                "fake id", "counterfeit",
+            ]
+        ] + [
+            # Severity: warn — soft warning, don't block
+            (k, "warn") for k in [
+                "dm me", "text me", "my number", "snapchat", "telegram",
+                "cashapp", "cash app", "venmo request", "send money",
+            ]
+        ]
+        for kw, severity in keywords:
+            cur.execute(
+                "INSERT INTO moderation_keywords (keyword, severity) VALUES (%s, %s) ON CONFLICT (keyword) DO NOTHING",
+                (kw, severity),
+            )
+        conn.commit()
 
     # ── Seed default admin if missing ──
     # Check for ADMIN_EMAIL and ADMIN_PASSWORD in environment

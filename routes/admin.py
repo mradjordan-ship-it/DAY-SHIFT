@@ -363,10 +363,37 @@ def admin_suspend_user(user_id: int, body: dict, admin=Depends(require_admin)):
     reason = body.get("reason", "Suspended by admin")
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET is_suspended=TRUE, suspension_reason=%s WHERE id=%s", (reason, user_id))
-    conn.commit()
-    cur.close()
-    conn.close()
+    try:
+        strike = _apply_strike(
+            conn, cur, user_id,
+            reason=reason,
+            issued_by=admin["id"],
+        )
+        # If strike system didn't auto-suspend, force permanent suspend
+        if not strike.get("suspended"):
+            cur.execute(
+                "UPDATE users SET is_suspended=TRUE, suspension_reason=%s, suspension_expires_at=NULL WHERE id=%s",
+                (reason, user_id),
+            )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, f"Failed to suspend: {e}")
+    finally:
+        cur.close()
+        conn.close()
+    # Send suspension email
+    try:
+        from .email_utils import send_suspension_email
+        cur2 = get_conn().cursor()
+        cur2.execute("SELECT name, email FROM users WHERE id = %s", (user_id,))
+        target_user = cur2.fetchone()
+        if target_user:
+            send_suspension_email(target_user["email"], target_user["name"], reason)
+        cur2.close()
+        get_conn().close()
+    except Exception:
+        pass
     # Notify user via push
     try:
         from .push import send_push_to_user
@@ -380,7 +407,7 @@ def admin_suspend_user(user_id: int, body: dict, admin=Depends(require_admin)):
 def admin_unsuspend_user(user_id: int, admin=Depends(require_admin)):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET is_suspended=FALSE, suspension_reason=NULL WHERE id=%s", (user_id,))
+    cur.execute("UPDATE users SET is_suspended=FALSE, suspension_reason=NULL, suspension_expires_at=NULL WHERE id=%s", (user_id,))
     conn.commit()
     cur.close()
     conn.close()

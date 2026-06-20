@@ -1,22 +1,42 @@
 [
   {
-    "content": "Hide boost/advertise buttons from admin profile",
-    "id": "fix-1",
+    "content": "Add strikes + appeals tables and suspension_expires_at column via migration",
+    "id": "1",
     "status": "completed"
   },
   {
-    "content": "Fix advertise button size in profile post cards to match Edit button",
-    "id": "fix-2",
+    "content": "Update reports.py to issue strikes instead of auto-suspend, with tier thresholds",
+    "id": "2",
     "status": "completed"
   },
   {
-    "content": "Admin dashboard: delete horizontal top row, keep tappable containers, delete Get in Touch",
-    "id": "fix-3",
+    "content": "Add appeal endpoints (create, admin review) and unsuspend on approval",
+    "id": "3",
     "status": "completed"
   },
   {
-    "content": "Build and commit",
-    "id": "fix-4",
+    "content": "Add auto-expiring suspension check in deps.py login/session guard",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "Send suspension/strike emails via Resend",
+    "id": "5",
+    "status": "completed"
+  },
+  {
+    "content": "Add text content scanning (titles, bios, descriptions) with keyword filter",
+    "id": "6",
+    "status": "completed"
+  },
+  {
+    "content": "Update AdminScreen with strikes view and appeals review",
+    "id": "7",
+    "status": "completed"
+  },
+  {
+    "content": "Update AuthScreen to show appeal option for suspended users",
+    "id": "8",
     "status": "completed"
   }
 ]

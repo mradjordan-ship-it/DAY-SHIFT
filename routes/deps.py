@@ -146,7 +146,27 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     if user["is_suspended"]:
-        raise HTTPException(status_code=403, detail=f"Account suspended: {user['suspension_reason'] or 'Violation of community guidelines'}")
+        # Check if suspension has expired
+        if user.get("suspension_expires_at") and user["suspension_expires_at"] < datetime.now(timezone.utc):
+            # Auto-unsuspend
+            conn2 = get_conn()
+            cur2 = conn2.cursor()
+            cur2.execute(
+                "UPDATE users SET is_suspended=FALSE, suspension_reason=NULL, suspension_expires_at=NULL WHERE id=%s",
+                (user_id,),
+            )
+            conn2.commit()
+            cur2.close()
+            conn2.close()
+            # Re-fetch the updated user
+            conn3 = get_conn()
+            cur3 = conn3.cursor()
+            cur3.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            user = dict(cur3.fetchone())
+            cur3.close()
+            conn3.close()
+        else:
+            raise HTTPException(status_code=403, detail=f"Account suspended: {user['suspension_reason'] or 'Violation of community guidelines'}")
     return dict(user)
 
 
