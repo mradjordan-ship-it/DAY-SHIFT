@@ -18,9 +18,11 @@ import { trackEvent } from "../lib/analytics";
 export default function AuthScreen({
   mode,
   tokenParam,
+  advertiserOnly = false,
 }: {
   mode: "login" | "register" | "forgot" | "reset" | "verify-email";
   tokenParam?: string;
+  advertiserOnly?: boolean;
 }) {
   const { login } = useAuth();
   const { navigate } = useNav();
@@ -31,6 +33,13 @@ export default function AuthScreen({
     password: "",
     role: "worker" as "worker" | "employer" | "advertiser",
   });
+
+  // Auto-select advertiser role when coming from advertise flow
+  useEffect(() => {
+    if (advertiserOnly && mode === "register") {
+      setForm(prev => ({ ...prev, role: "advertiser" }));
+    }
+  }, [advertiserOnly, mode]);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -478,7 +487,7 @@ export default function AuthScreen({
             : "Create your account"}
         </h1>
 
-        {mode === "register" && (
+        {mode === "register" && !advertiserOnly && (
           <>
             <p className="text-xs text-muted-foreground text-center">I am a...</p>
           <div className="grid grid-cols-3 gap-2">

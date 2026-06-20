@@ -433,7 +433,7 @@ export default function App() {
             {screen === "chat" && <ChatScreen matchId={params.matchId as number} />}
             {screen === "profile" && <ProfileScreen key={user.id} />}
             {screen === "login" && <AuthScreen mode="login" />}
-            {screen === "register" && <AuthScreen mode="register" />}
+            {screen === "register" && <AuthScreen mode="register" advertiserOnly={!!params.advertiser} />}
             {screen === "forgot" && <AuthScreen mode="forgot" />}
             {screen === "reset" && <AuthScreen mode="reset" tokenParam={params.token as string} />}
             {screen === "verify-email" && <AuthScreen mode="verify-email" tokenParam={params.token as string} />}

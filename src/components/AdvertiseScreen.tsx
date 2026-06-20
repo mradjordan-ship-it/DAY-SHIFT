@@ -68,7 +68,7 @@ export default function AdvertiseScreen() {
   const handleTierClick = (tierKey: string) => {
     if (!user) {
       // Non-user: send to register with advertiser role pre-selected
-      navigate("register");
+      navigate("register", { advertiser: true });
       return;
     }
     if (!token) return;
