@@ -1,27 +1,22 @@
 [
   {
-    "content": "Add 'advertiser' role to auth.py register endpoint + is_advertiser flag",
-    "id": "adv-1",
+    "content": "Hide boost/advertise buttons from admin profile",
+    "id": "fix-1",
     "status": "completed"
   },
   {
-    "content": "Add Advertiser role option in AuthScreen register with agreement checkbox",
-    "id": "adv-2",
+    "content": "Fix advertise button size in profile post cards to match Edit button",
+    "id": "fix-2",
     "status": "completed"
   },
   {
-    "content": "Rewrite AdvertiseScreen: agreement dialog for users, register redirect for non-users",
-    "id": "adv-3",
-    "status": "completed"
-  },
-  {
-    "content": "Move billing text into tier cards, remove bottom sections",
-    "id": "adv-4",
-    "status": "completed"
+    "content": "Admin dashboard: delete horizontal top row, keep tappable containers, delete Get in Touch",
+    "id": "fix-3",
+    "status": "in_progress"
   },
   {
     "content": "Build and commit",
-    "id": "adv-5",
-    "status": "completed"
+    "id": "fix-4",
+    "status": "pending"
   }
 ]

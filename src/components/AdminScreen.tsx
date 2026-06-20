@@ -318,12 +318,10 @@ export default function AdminScreen() {
 
   const openReports = reports.filter((r) => r.status === "open").length;
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "overview", label: "Overview", icon: <TrendingUp size={14} /> },
     { key: "users", label: `Users (${users.length})`, icon: <Users size={14} /> },
     { key: "videos", label: `Videos (${videos.length})`, icon: <Video size={14} /> },
     { key: "matches", label: `Matches (${matches.length})`, icon: <Handshake size={14} /> },
     { key: "reports", label: `Reports${openReports > 0 ? ` (${openReports})` : ""}`, icon: <Flag size={14} /> },
-    { key: "sponsors", label: `Sponsors${sponsorContacts.length > 0 ? ` (${sponsorContacts.length})` : ""}`, icon: <Heart size={14} /> },
     { key: "tips", label: `Tips${tips.length > 0 ? ` (${tips.length})` : ""}`, icon: <DollarSign size={14} /> },
     { key: "scheduled", label: `Scheduled${scheduledPosts.length > 0 ? ` (${scheduledPosts.length})` : ""}`, icon: <Clock size={14} /> },
     { key: "boosts", label: "Boosts", icon: <Zap size={14} /> },
@@ -333,29 +331,37 @@ export default function AdminScreen() {
     <div className="flex flex-col h-[calc(100vh-120px)]">
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <Shield size={20} className="text-primary" />
           <h1 className="text-2xl text-foreground" style={{ fontFamily: "'Bebas Neue'" }}>
             Admin Dashboard
           </h1>
-        </div>
-        <div className="flex gap-1 overflow-x-auto">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all
-                ${tab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              {t.icon} {t.label}
+          <Badge className="text-[10px] border-0 bg-primary/20 text-primary ml-auto">Overview</Badge>
+          {tab !== "overview" && (
+            <button onClick={() => setTab("overview")} className="text-muted-foreground hover:text-foreground ml-1">
+              <ArrowLeft size={16} />
             </button>
-          ))}
+          )}
         </div>
+        {tab !== "overview" && (
+          <div className="flex gap-1 overflow-x-auto">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all
+                  ${tab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {tab === "overview" && stats && <OverviewTab stats={stats} />}
+        {tab === "overview" && stats && <OverviewTab stats={stats} onNavigate={(t) => setTab(t)} />}
         {tab === "users" && (
           <UsersTab
             users={users}
@@ -385,7 +391,6 @@ export default function AdminScreen() {
             }}
           />
         )}
-        {tab === "sponsors" && <SponsorsTab contacts={sponsorContacts} token={token!} onRefresh={fetchSupport} />}
         {tab === "tips" && <TipsTab tips={tips} onRefresh={fetchSupport} />}
         {tab === "boosts" && <BoostsTab token={token!} />}
       </div>
@@ -533,18 +538,34 @@ function StatCard({ label, value, icon, color }: { label: string; value: number 
   );
 }
 
-function OverviewTab({ stats }: { stats: Stats }) {
+function OverviewTab({ stats, onNavigate }: { stats: Stats; onNavigate: (tab: Tab) => void }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Total Users" value={stats.total_users} icon={<Users size={18} className="text-blue-400" />} color="bg-blue-500/10" />
-        <StatCard label="Crew" value={stats.workers} icon={<Users size={18} className="text-orange-400" />} color="bg-orange-500/10" />
-        <StatCard label="Spots" value={stats.employers} icon={<Users size={18} className="text-blue-400" />} color="bg-blue-500/10" />
-        <StatCard label="Videos" value={stats.total_videos} icon={<Video size={18} className="text-purple-400" />} color="bg-purple-500/10" />
-        <StatCard label="Pending" value={stats.pending_matches} icon={<Clock size={18} className="text-yellow-400" />} color="bg-yellow-500/10" />
-        <StatCard label="Active" value={stats.active_matches} icon={<TrendingUp size={18} className="text-green-400" />} color="bg-green-500/10" />
-        <StatCard label="Completed" value={stats.completed_matches} icon={<CheckCircle2 size={18} className="text-primary" />} color="bg-primary/10" />
-        <StatCard label="Total Matches" value={stats.total_matches} icon={<Handshake size={18} className="text-primary" />} color="bg-primary/10" />
+        <button onClick={() => onNavigate("users")}>
+          <StatCard label="Total Users" value={stats.total_users} icon={<Users size={18} className="text-blue-400" />} color="bg-blue-500/10" />
+        </button>
+        <button onClick={() => onNavigate("users")}>
+          <StatCard label="Crew" value={stats.workers} icon={<Users size={18} className="text-orange-400" />} color="bg-orange-500/10" />
+        </button>
+        <button onClick={() => onNavigate("users")}>
+          <StatCard label="Spots" value={stats.employers} icon={<Users size={18} className="text-blue-400" />} color="bg-blue-500/10" />
+        </button>
+        <button onClick={() => onNavigate("videos")}>
+          <StatCard label="Videos" value={stats.total_videos} icon={<Video size={18} className="text-purple-400" />} color="bg-purple-500/10" />
+        </button>
+        <button onClick={() => onNavigate("matches")}>
+          <StatCard label="Pending" value={stats.pending_matches} icon={<Clock size={18} className="text-yellow-400" />} color="bg-yellow-500/10" />
+        </button>
+        <button onClick={() => onNavigate("matches")}>
+          <StatCard label="Active" value={stats.active_matches} icon={<TrendingUp size={18} className="text-green-400" />} color="bg-green-500/10" />
+        </button>
+        <button onClick={() => onNavigate("matches")}>
+          <StatCard label="Completed" value={stats.completed_matches} icon={<CheckCircle2 size={18} className="text-primary" />} color="bg-primary/10" />
+        </button>
+        <button onClick={() => onNavigate("matches")}>
+          <StatCard label="Total Matches" value={stats.total_matches} icon={<Handshake size={18} className="text-primary" />} color="bg-primary/10" />
+        </button>
       </div>
 
       <div className="bg-card border border-border rounded-xl p-4">

@@ -421,12 +421,16 @@ export default function ProfileScreen() {
                       <Trash2 size={12} />
                     </Button>
                     <div className="flex-1" />
-                    <Button size="sm" onClick={() => navigate("boost", { videoId: video.id })} className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0">
-                      <Zap size={12} className="mr-1" /> Boost
-                    </Button>
-                    <Button size="sm" onClick={() => navigate("advertise")} className="h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0">
-                      <Sparkles size={12} className="mr-1" /> Advertise
-                    </Button>
+                    {!isAdmin && (
+                      <>
+                        <Button size="sm" onClick={() => navigate("boost", { videoId: video.id })} className="h-7 px-2 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0">
+                          <Zap size={12} className="mr-0.5" /> Boost
+                        </Button>
+                        <Button size="sm" onClick={() => navigate("advertise")} className="h-7 px-2 text-xs bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0">
+                          <Sparkles size={12} className="mr-0.5" /> Ad
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
