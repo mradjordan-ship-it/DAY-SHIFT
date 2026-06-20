@@ -92,8 +92,8 @@ async def register(
     email = email.strip().lower()
 
     _validate_password(password)
-    if role not in ("worker", "employer"):
-        raise HTTPException(400, "role must be 'worker' or 'employer'")
+    if role not in ("worker", "employer", "advertiser"):
+        raise HTTPException(400, "role must be 'worker', 'employer', or 'advertiser'")
     if not image or not image.filename:
         raise HTTPException(400, "Profile image is required")
 
@@ -123,8 +123,8 @@ async def register(
         # Generate email verification token
         verify_token = str(uuid.uuid4())
         cur.execute(
-            "INSERT INTO users (name, email, password_hash, role, avatar_url, email_verified, email_verify_token) VALUES (%s, %s, %s, %s, %s, FALSE, %s) RETURNING *",
-            (name, email, hash_password(password), role, avatar_url, verify_token),
+            "INSERT INTO users (name, email, password_hash, role, avatar_url, email_verified, email_verify_token, is_advertiser, advertiser_agreement_accepted) VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s) RETURNING *",
+            (name, email, hash_password(password), role, avatar_url, verify_token, role == "advertiser", role == "advertiser"),
         )
         user = dict(cur.fetchone())
         conn.commit()

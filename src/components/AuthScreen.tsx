@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TermsContent, PrivacyContent } from "./LegalContent";
-import { Camera, Building2, X, Eye, EyeOff, HardHat } from "lucide-react";
+import { Camera, Building2, X, Eye, EyeOff, HardHat, Megaphone } from "lucide-react";
 import { trackEvent } from "../lib/analytics";
 
 export default function AuthScreen({
@@ -29,7 +29,7 @@ export default function AuthScreen({
     name: "",
     email: "",
     password: "",
-    role: "worker" as "worker" | "employer",
+    role: "worker" as "worker" | "employer" | "advertiser",
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -43,6 +43,7 @@ export default function AuthScreen({
   // Signup gate
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [adAgreementAccepted, setAdAgreementAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [legalDialog, setLegalDialog] = useState<"terms" | "privacy" | null>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
@@ -187,6 +188,10 @@ export default function AuthScreen({
         setError("Please accept Terms of Use and Privacy Policy.");
         return;
       }
+      if (form.role === "advertiser" && !adAgreementAccepted) {
+        setError("Please accept the Advertiser Agreement.");
+        return;
+      }
 
       const fd = new FormData();
       fd.append("name", form.name);
@@ -220,7 +225,8 @@ export default function AuthScreen({
   }
 
   const canSubmitRegister =
-    !!imageFile && termsAccepted && privacyAccepted;
+    !!imageFile && termsAccepted && privacyAccepted &&
+    (form.role !== "advertiser" || adAgreementAccepted);
 
   // Password strength for register form
   const pwStrength = (() => {
@@ -473,26 +479,29 @@ export default function AuthScreen({
         </h1>
 
         {mode === "register" && (
-          <div className="grid grid-cols-2 gap-2">
-            {(["worker", "employer"] as const).map((r) => (
+          <>
+            <p className="text-xs text-muted-foreground text-center">I am a...</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { key: "worker", label: "Crew", icon: <HardHat size={14} /> },
+              { key: "employer", label: "Kitchen", icon: <Building2 size={14} /> },
+              { key: "advertiser", label: "Advertiser", icon: <Megaphone size={14} /> },
+            ] as const).map(({ key, label, icon }) => (
               <button
-                key={r}
+                key={key}
                 type="button"
-                onClick={() => set("role", r)}
-                className={`rounded-xl py-3 text-sm font-semibold border transition-all flex items-center justify-center gap-1 ${
-                  form.role === r
+                onClick={() => set("role", key)}
+                className={`rounded-xl py-3 text-xs font-semibold border transition-all flex flex-col items-center justify-center gap-1 ${
+                  form.role === key
                     ? "bg-primary text-primary-foreground border-primary ember-glow"
                     : "bg-secondary text-muted-foreground border-border hover:border-primary/50"
                 }`}
               >
-                {r === "worker" ? (
-                  <><HardHat size={14} /> Crew</>
-                ) : (
-                  <><Building2 size={14} /> Kitchen</>
-                )}
+                {icon} {label}
               </button>
             ))}
           </div>
+          </>
         )}
 
         {mode === "register" && (
@@ -582,6 +591,20 @@ export default function AuthScreen({
                   I agree to the <button type="button" onClick={() => setLegalDialog("privacy")} className="text-primary underline">Privacy Policy</button> (required)
                 </span>
               </label>
+
+              {form.role === "advertiser" && (
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={adAgreementAccepted}
+                    onChange={(e) => setAdAgreementAccepted(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-foreground">
+                    I agree to the <button type="button" onClick={() => setLegalDialog("terms")} className="text-primary underline">Advertiser Agreement</button> (required)
+                  </span>
+                </label>
+              )}
             </div>
           </div>
         )}

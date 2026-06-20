@@ -1,37 +1,27 @@
 [
   {
-    "content": "Fix notifications: remove import.meta.env.PROD guard in main.tsx",
-    "id": "notif-1",
+    "content": "Add 'advertiser' role to auth.py register endpoint + is_advertiser flag",
+    "id": "adv-1",
     "status": "completed"
   },
   {
-    "content": "Fix feed sort: pin boosted posts to top by tier weight instead of re-sorting by created_at",
-    "id": "boost-1",
+    "content": "Add Advertiser role option in AuthScreen register with agreement checkbox",
+    "id": "adv-2",
     "status": "completed"
   },
   {
-    "content": "Show boost badges in FeedScreen for user-purchased boosts (spotlight/premium tiers)",
-    "id": "boost-2",
+    "content": "Rewrite AdvertiseScreen: agreement dialog for users, register redirect for non-users",
+    "id": "adv-3",
     "status": "completed"
   },
   {
-    "content": "Priority carousel placement for spotlight/premium boosted posts",
-    "id": "boost-3",
+    "content": "Move billing text into tier cards, remove bottom sections",
+    "id": "adv-4",
     "status": "completed"
   },
   {
-    "content": "Gate analytics endpoint to premium/enterprise advertiser tier only",
-    "id": "boost-4",
-    "status": "completed"
-  },
-  {
-    "content": "Load boosted posts on infinite scroll (not just first page)",
-    "id": "boost-5",
-    "status": "completed"
-  },
-  {
-    "content": "Build frontend, commit all changes",
-    "id": "build",
+    "content": "Build and commit",
+    "id": "adv-5",
     "status": "in_progress"
   }
 ]
