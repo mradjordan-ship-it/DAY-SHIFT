@@ -363,62 +363,39 @@ export default function ProfileScreen() {
 
       </div>
 
-      {/* Videos list — same style as admin */}
-      <div className="px-5 mb-5">
-        <h3 className="text-lg text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
-          My Posts ({videos.length})
-        </h3>
-        {videos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-border rounded-xl">
-            <p className="text-muted-foreground text-sm mb-2">No posts yet</p>
+      {/* My Posts — single collapsible container */}
+      {videos.length > 0 && (
+        <div className="px-5 mb-5">
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
             <button
-              onClick={() => navigate("post")}
-              className="text-xs text-primary font-semibold hover:underline"
+              onClick={() => setExpandedPost(expandedPost === -1 ? null : -1)}
+              className="w-full p-3 flex items-center justify-between hover:bg-secondary/30 transition-colors"
             >
-              Create your first post →
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <VideoIcon size={14} className="text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground text-sm">My Posts</p>
+                  <p className="text-[11px] text-muted-foreground">{videos.length} post{videos.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className="text-[10px] border-0 bg-primary/20 text-primary">
+                  {videos.length}
+                </Badge>
+                {expandedPost === -1 ? (
+                  <ChevronUp size={16} className="text-muted-foreground" />
+                ) : (
+                  <ChevronDown size={16} className="text-muted-foreground" />
+                )}
+              </div>
             </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {videos.map((video) => (
-              <div key={video.id} className="bg-card border border-border rounded-xl overflow-hidden">
-                {/* Collapsible header */}
-                <button
-                  onClick={() => setExpandedPost(expandedPost === video.id ? null : video.id)}
-                  className="w-full p-3 flex items-center justify-between hover:bg-secondary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {video.image_url ? (
-                      <img src={video.image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-black flex-shrink-0" />
-                    ) : video.video_url ? (
-                      <div className="w-10 h-10 rounded-lg bg-black flex-shrink-0 flex items-center justify-center text-muted-foreground">
-                        <VideoIcon size={16} />
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex-shrink-0 flex items-center justify-center text-muted-foreground text-[9px]">
-                        Text
-                      </div>
-                    )}
-                    <div className="text-left min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-foreground text-sm truncate">{video.title || "Untitled"}</span>
-                        {video.category && (
-                          <Badge className="text-[9px] border-0 bg-muted text-muted-foreground">{video.category}</Badge>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  {expandedPost === video.id ? (
-                    <ChevronUp size={16} className="text-muted-foreground flex-shrink-0" />
-                  ) : (
-                    <ChevronDown size={16} className="text-muted-foreground flex-shrink-0" />
-                  )}
-                </button>
 
-                {/* Expanded details + actions */}
-                {expandedPost === video.id && (
-                  <div className="border-t border-border p-3 bg-secondary/20">
+            {expandedPost === -1 && (
+              <div className="border-t border-border divide-y divide-border">
+                {videos.map((video) => (
+                  <div key={video.id} className="p-3 bg-secondary/20">
                     <div className="flex items-start gap-3">
                       {video.image_url ? (
                         <img src={video.image_url} alt="" className="w-16 h-16 rounded-lg object-cover bg-black flex-shrink-0" />
@@ -448,7 +425,6 @@ export default function ProfileScreen() {
                         </div>
                       </div>
                     </div>
-                    {/* Action buttons */}
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
                       <Button size="sm" variant="outline" onClick={() => openEditPost(video)} className="text-xs flex-shrink-0">
                         <Pencil size={12} className="mr-1" /> Edit
@@ -469,12 +445,26 @@ export default function ProfileScreen() {
                       )}
                     </div>
                   </div>
-                )}
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {videos.length === 0 && (
+        <div className="px-5 mb-5">
+          <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-border rounded-xl">
+            <p className="text-muted-foreground text-sm mb-2">No posts yet</p>
+            <button
+              onClick={() => navigate("post")}
+              className="text-xs text-primary font-semibold hover:underline"
+            >
+              Create your first post →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Reviews */}
       {reviews.length > 0 && (
