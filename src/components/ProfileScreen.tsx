@@ -429,7 +429,12 @@ export default function ProfileScreen() {
                       </p>
                       <p className="text-[9px] text-muted-foreground">Rating</p>
                     </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-foreground">{new Date(user.created_at).toLocaleDateString()}</p>
+                      <p className="text-[9px] text-muted-foreground">Joined</p>
+                    </div>
                   </div>
+                  <p className="text-[10px] text-center text-muted-foreground mt-1">Member since {new Date(user.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
                   {dashData.pending_matches > 0 && (
                     <div className="mt-2 flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
                       <MessageCircle size={12} className="text-amber-400 flex-shrink-0" />
