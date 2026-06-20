@@ -1,9 +1,6 @@
 """FastAPI app factory for Day Shift Marketplace."""
 import os
 
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -36,20 +33,6 @@ from .legal import api as legal_router
 
 
 def create_app(static_dir: str = "./dist") -> FastAPI:
-    # ── Sentry error monitoring ───────────────────────────────────────────
-    sentry_dsn = os.environ.get("SENTRY_DSN")
-    if sentry_dsn:
-        try:
-            sentry_sdk.init(
-                dsn=sentry_dsn,
-                integrations=[FastApiIntegration()],
-                traces_sample_rate=0.1,
-                environment=os.environ.get("SENTRY_ENV", "production"),
-                release=os.environ.get("SENTRY_RELEASE", "1.0.0"),
-            )
-        except Exception as e:
-            print(f"[Sentry] Failed to initialize (bad DSN?): {e}")
-
     try:
         init_db()
     except Exception as e:
@@ -89,7 +72,7 @@ def create_app(static_dir: str = "./dist") -> FastAPI:
             "img-src 'self' data: blob: https:; "
             "media-src 'self' blob: https:; "
             "frame-src https://js.stripe.com https://hooks.stripe.com; "
-            "connect-src 'self' https://api.stripe.com https://us.i.posthog.com https://us.posthog.com https://o*.ingest.sentry.io; "
+            "connect-src 'self' https://api.stripe.com https://us.i.posthog.com https://us.posthog.com; "
             "font-src 'self'; "
             "object-src 'none'; "
             "base-uri 'self';"
