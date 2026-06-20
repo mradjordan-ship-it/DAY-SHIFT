@@ -12,12 +12,10 @@ api = APIRouter()
 
 @api.post("/advertiser/agreement")
 def accept_advertiser_agreement(current_user=Depends(get_current_user)):
-    if not current_user.get("is_advertiser"):
-        raise HTTPException(403, "Not an advertiser")
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE users SET advertiser_agreement_accepted = TRUE WHERE id = %s RETURNING id",
+        "UPDATE users SET advertiser_agreement_accepted = TRUE, is_advertiser = TRUE WHERE id = %s RETURNING id",
         (current_user["id"],),
     )
     conn.commit()

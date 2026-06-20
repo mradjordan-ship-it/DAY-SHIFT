@@ -490,11 +490,10 @@ export default function AuthScreen({
         {mode === "register" && !advertiserOnly && (
           <>
             <p className="text-xs text-muted-foreground text-center">I am a...</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {([
               { key: "worker", label: "Crew", icon: <HardHat size={14} /> },
               { key: "employer", label: "Kitchen", icon: <Building2 size={14} /> },
-              { key: "advertiser", label: "Advertiser", icon: <Megaphone size={14} /> },
             ] as const).map(({ key, label, icon }) => (
               <button
                 key={key}
