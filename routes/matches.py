@@ -117,6 +117,36 @@ def create_match(body: MatchBody, current_user=Depends(get_current_user)):
     if cur.fetchone():
         raise HTTPException(400, "Match already exists")
 
+    # Check for overlapping shifts: worker with active/pending match whose video shares the same event_date
+    if employer_video_id:
+        cur.execute("SELECT event_date FROM videos WHERE id = %s", (employer_video_id,))
+        new_evt = cur.fetchone()
+        new_date = new_evt["event_date"] if new_evt else None
+    elif worker_video_id:
+        cur.execute("SELECT event_date FROM videos WHERE id = %s", (worker_video_id,))
+        new_evt = cur.fetchone()
+        new_date = new_evt["event_date"] if new_evt else None
+    else:
+        new_date = None
+
+    if new_date and new_date.strip():
+        cur.execute(
+            """SELECT m.id, v.title
+               FROM matches m
+               JOIN videos v ON v.id IN (m.employer_video_id, m.worker_video_id)
+               WHERE (m.worker_id = %s OR m.employer_id = %s)
+                 AND m.status IN ('pending', 'active')
+                 AND v.event_date = %s
+                 AND m.employer_id != %s""",
+            (worker_id, worker_id, new_date, employer_id),
+        )
+        overlap = cur.fetchone()
+        if overlap:
+            raise HTTPException(
+                409,
+                "You already have a shift on this date with another employer. Cancel it before applying for overlapping shifts."
+            )
+
     try:
         cur.execute(
             """INSERT INTO matches (worker_id, employer_id, worker_video_id, employer_video_id, status, initiated_by)

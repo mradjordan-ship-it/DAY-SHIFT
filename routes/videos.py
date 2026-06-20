@@ -320,6 +320,37 @@ def create_video(
     if aspect_ratio not in ("9:16", "1:1", "4:5", "16:9"):
         aspect_ratio = "9:16"
 
+    # Validate pay_rate: must be a positive number if provided
+    if pay_rate and pay_rate.strip():
+        try:
+            pay_val = float(pay_rate.replace("$", "").replace(",", "").strip())
+            if pay_val < 0:
+                raise HTTPException(400, "Pay rate cannot be negative")
+        except ValueError:
+            pass  # non-numeric pay_rate is allowed (e.g. "Negotiable")
+
+    # Validate event_date: cannot be in the past
+    if event_date and event_date.strip():
+        try:
+            from datetime import date as _date
+            evt = _date.fromisoformat(event_date)
+            if evt < _date.today():
+                raise HTTPException(400, "Event date cannot be in the past")
+        except (ValueError, TypeError):
+            pass  # malformed date — let it through, stored as text
+
+    # Validate scheduled_at: cannot be in the past
+    if scheduled_at and scheduled_at.strip():
+        try:
+            from datetime import datetime as _dt, timezone as _tz
+            sched = _dt.fromisoformat(scheduled_at.replace("Z", "+00:00"))
+            if sched.tzinfo is None:
+                sched = sched.replace(tzinfo=_tz.utc)
+            if sched < _dt.now(_tz.utc):
+                raise HTTPException(400, "Scheduled time cannot be in the past")
+        except (ValueError, TypeError):
+            pass
+
     conn = get_conn()
     cur = conn.cursor()
     try:

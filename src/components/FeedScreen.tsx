@@ -273,10 +273,13 @@ export default function FeedScreen() {
       } else {
         const data = await res.json().catch(() => ({}));
         if (data.detail?.includes("already exists")) {
-          // Already matched — go to matches screen
           navigate("matches");
+        } else if (data.detail?.includes("overlap") || data.detail?.includes("same date")) {
+          setError(data.detail);
+          setTimeout(() => setError(""), 5000);
         } else if (data.detail) {
           setError(data.detail);
+          setTimeout(() => setError(""), 5000);
         }
       }
     } catch {}

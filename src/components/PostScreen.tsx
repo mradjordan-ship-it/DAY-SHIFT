@@ -43,6 +43,7 @@ export default function PostScreen() {
   const [videoProgress, setVideoProgress] = useState(0);
   const [imageError, setImageError] = useState("");
   const [videoError, setVideoError] = useState("");
+  const [formError, setFormError] = useState("");
   const [aspectRatio, setAspectRatio] = useState<"9:16" | "1:1" | "4:5" | "16:9">("16:9");
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -332,6 +333,28 @@ export default function PostScreen() {
   };
 
   const doSubmit = async () => {
+    setFormError("");
+
+    // Client-side validation
+    if (form.pay_rate) {
+      const cleaned = form.pay_rate.replace("$", "").replace(",", "").trim();
+      const parsed = parseFloat(cleaned);
+      if (!isNaN(parsed) && parsed < 0) {
+        setFormError("Pay rate cannot be negative");
+        return;
+      }
+    }
+    if (form.event_date) {
+      try {
+        const d = new Date(form.event_date + "T00:00:00");
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (d < today) {
+          setFormError("Event date cannot be in the past");
+          return;
+        }
+      } catch {}
+    }
+
     setSubmitting(true);
     try {
       const fd = new FormData();
@@ -711,6 +734,12 @@ export default function PostScreen() {
             </div>
 
             {/* Navigation */}
+            {formError && (
+              <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                <X size={12} className="text-destructive flex-shrink-0" />
+                <p className="text-destructive text-xs">{formError}</p>
+              </div>
+            )}
             <div className="flex gap-2 pt-1">
               <Button
                 variant="outline"
