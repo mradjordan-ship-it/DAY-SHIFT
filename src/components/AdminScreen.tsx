@@ -142,7 +142,7 @@ interface AdminReport {
   created_at: string;
 }
 
-type Tab = "overview" | "users" | "videos" | "matches" | "reports" | "appeals" | "content-flags" | "tips" | "scheduled" | "boosts";
+type Tab = "overview" | "users" | "videos" | "matches" | "reports" | "appeals" | "content-flags" | "tips" | "scheduled";
 
 export default function AdminScreen() {
   const { user, token } = useAuth();
@@ -336,7 +336,6 @@ export default function AdminScreen() {
     { key: "content-flags", label: `Flags${contentFlags.length > 0 ? ` (${contentFlags.length})` : ""}`, icon: <AlertTriangle size={14} /> },
     { key: "tips", label: `Tips${tips.length > 0 ? ` (${tips.length})` : ""}`, icon: <DollarSign size={14} /> },
     { key: "scheduled", label: `Scheduled${scheduledPosts.length > 0 ? ` (${scheduledPosts.length})` : ""}`, icon: <Clock size={14} /> },
-    { key: "boosts", label: "Boosts", icon: <Zap size={14} /> },
   ];
 
   return (
@@ -404,7 +403,6 @@ export default function AdminScreen() {
           />
         )}
         {tab === "tips" && <TipsTab tips={tips} onRefresh={fetchSupport} />}
-        {tab === "boosts" && <BoostsTab token={token!} />}
         {tab === "appeals" && (
           <AppealsTab
             appeals={appeals}
@@ -1505,126 +1503,6 @@ function TipsTab({ tips, onRefresh }: { tips: any[]; onRefresh: () => void }) {
         <div className="text-center py-12">
           <DollarSign size={32} className="text-muted-foreground mx-auto mb-3" />
           <p className="text-muted-foreground text-sm">No tips yet</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BoostsTab({ token }: { token: string }) {
-  const [boosts, setBoosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actioning, setActioning] = useState<number | null>(null);
-
-  useEffect(() => {
-    const headers = { Authorization: `Bearer ${token}` };
-    fetch("/api/admin/boosts", { headers })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setBoosts)
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  const handleAction = async (boostId: number, action: "approve" | "reject") => {
-    setActioning(boostId);
-    await fetch(`/api/admin/boosts/${boostId}`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    setBoosts((prev) => prev.map((b) => (b.id === boostId ? { ...b, status: action === "approve" ? "active" : "rejected" } : b)));
-    setActioning(null);
-  };
-
-  const pending = boosts.filter((b) => b.status === "pending");
-  const active = boosts.filter((b) => b.status === "active");
-  const other = boosts.filter((b) => !["pending", "active"].includes(b.status));
-
-  const tierColors: Record<string, string> = {
-    boost: "bg-green-500/20 text-green-300",
-    spotlight: "bg-amber-500/20 text-amber-300",
-    premium: "bg-purple-500/20 text-purple-300",
-  };
-  const tierPrices: Record<string, number> = { boost: 25, spotlight: 75, premium: 150 };
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-32"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">Manage advertiser post boosts. Payments via Stripe.</p>
-
-      {pending.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-            <Clock size={14} className="text-amber-400" /> Pending ({pending.length})
-          </h3>
-          {pending.map((b: any) => (
-            <div key={b.id} className="bg-card border border-border rounded-xl p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge className={`text-[10px] border-0 ${tierColors[b.tier] || "bg-muted"}`}>{b.tier}</Badge>
-                <span className="text-foreground font-semibold text-sm flex-1 truncate">{b.video_title || "Post"}</span>
-                <span className="text-foreground font-bold">${tierPrices[b.tier] || "?"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span>{b.user_name}</span>
-                <span>·</span>
-                <span>{new Date(b.created_at).toLocaleDateString()}</span>
-                <Badge className={`text-[9px] border-0 ${b.payment_status === "paid" ? "bg-green-500/20 text-green-300" : "bg-amber-500/20 text-amber-300"}`}>
-                  {b.payment_status === "paid" ? "✓ Paid" : "⏳ Not paid"}
-                </Badge>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleAction(b.id, "approve")} disabled={actioning === b.id || b.payment_status !== "paid"} className="flex-1 bg-green-600 text-white text-xs">
-                  {actioning === b.id ? "..." : "✓ Approve"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleAction(b.id, "reject")} disabled={actioning === b.id} className="flex-1 text-xs text-destructive">
-                  ✕ Reject
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {active.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-            <CheckCircle2 size={14} className="text-green-400" /> Active ({active.length})
-          </h3>
-          {active.map((b: any) => (
-            <div key={b.id} className="bg-card border border-green-500/20 rounded-xl p-3 flex items-center gap-3">
-              <Badge className={`text-[10px] border-0 ${tierColors[b.tier] || "bg-muted"}`}>{b.tier}</Badge>
-              <div className="flex-1 min-w-0">
-                <p className="text-foreground text-sm font-semibold truncate">{b.video_title || "Post"}</p>
-                <p className="text-muted-foreground text-[10px]">{b.user_name} · expires {b.end_date ? new Date(b.end_date).toLocaleDateString() : "?"}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {other.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-            <XCircle size={14} className="text-muted-foreground" /> Past ({other.length})
-          </h3>
-          {other.slice(0, 10).map((b: any) => (
-            <div key={b.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
-              <Badge className={`text-[10px] border-0 bg-muted text-muted-foreground`}>{b.tier}</Badge>
-              <div className="flex-1 min-w-0">
-                <p className="text-muted-foreground text-xs truncate">{b.video_title || "Post"}</p>
-              </div>
-              <Badge className="text-[9px] border-0 bg-muted text-muted-foreground">{b.status}</Badge>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {boosts.length === 0 && (
-        <div className="text-center py-12">
-          <Zap size={32} className="text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">No boosts yet</p>
         </div>
       )}
     </div>
