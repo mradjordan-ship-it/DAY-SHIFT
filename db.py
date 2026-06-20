@@ -267,7 +267,7 @@ def init_db():
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
 
-        -- Advertiser subscriptions / tiers
+        ALTER TABLE reports ADD COLUMN IF NOT EXISTS admin_action TEXT;
         CREATE TABLE IF NOT EXISTS advertiser_subscriptions (
             id SERIAL PRIMARY KEY,
             user_id INTEGER REFERENCES users(id),
