@@ -132,6 +132,16 @@ export default function App() {
     setNotifPermission(perm);
   };
 
+  // Sync notification permission with browser state
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+    const check = () => setNotifPermission(Notification.permission);
+    check();
+    // Re-check every 5 seconds to pick up changes from ProfileScreen
+    const id = setInterval(check, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   // Send a browser notification
   const sendNotification = (title: string, body: string) => {
     if (notifPermission !== "granted") return;
@@ -375,16 +385,16 @@ export default function App() {
                 {/* Notification bell */}
                 <button
                   onClick={notifPermission === "default" ? requestNotifs : () => navigate("matches")}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors relative ${
                     pendingMatches > 0
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary/50 text-muted-foreground hover:text-foreground"
                   }`}
                   title="Notifications"
                 >
-                  <Bell size={16} />
+                  <Bell size={16} className={pendingMatches > 0 && notifPermission === "granted" ? "animate-pulse" : ""} />
                   {pendingMatches > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold">
+                    <span className={`absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center font-bold ${notifPermission === "granted" ? "animate-ping" : ""}`}>
                       {pendingMatches > 9 ? "9+" : pendingMatches}
                     </span>
                   )}

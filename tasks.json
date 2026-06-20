@@ -12,11 +12,11 @@
   {
     "content": "Admin dashboard: delete horizontal top row, keep tappable containers, delete Get in Touch",
     "id": "fix-3",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Build and commit",
     "id": "fix-4",
-    "status": "pending"
+    "status": "completed"
   }
 ]
