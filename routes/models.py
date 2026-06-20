@@ -64,6 +64,10 @@ class AdminCreateBoostBody(BaseModel):
     duration_days: int = 1  # Custom duration for admin boosts
 
 
+class AdminAdvertiseBody(BaseModel):
+    tier: str = "starter"  # 'starter' | 'pro' | 'enterprise'
+
+
 class ReportBody(BaseModel):
     target_type: str  # "video" or "user"
     target_id: int

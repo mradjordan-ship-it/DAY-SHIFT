@@ -91,20 +91,39 @@ export default function AdvertiseScreen() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Create subscription checkout
-      const res = await fetch("/api/advertiser/subscribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ tier: pendingTier }),
-      });
-      const data = await res.json();
-      if (data.stripe_checkout_url) {
-        window.open(data.stripe_checkout_url, "_blank");
+
+      if (user?.is_admin) {
+        // Admin: free, no Stripe
+        const res = await fetch("/api/admin/advertise", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ tier: pendingTier }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const statusRes = await fetch("/api/advertiser/subscription-status", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (statusRes.ok) setSubStatus(await statusRes.json());
+        } else {
+          setError(data.detail || "Failed to activate advertiser");
+        }
       } else {
-        setError(data.detail || "Failed to start checkout");
+        // Regular user: Stripe checkout
+        const res = await fetch("/api/advertiser/subscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ tier: pendingTier }),
+        });
+        const data = await res.json();
+        if (data.stripe_checkout_url) {
+          window.open(data.stripe_checkout_url, "_blank");
+        } else {
+          setError(data.detail || "Failed to start checkout");
+        }
       }
     } catch {
       setError("Network error. Please try again.");
@@ -171,8 +190,8 @@ export default function AdvertiseScreen() {
                       <CardTitle className="text-lg">{tier.name}</CardTitle>
                     </div>
                     <div className="pt-1">
-                      <span className="text-3xl font-bold">${tier.price}</span>
-                      <span className="text-muted-foreground text-sm">/mo</span>
+                      <span className="text-3xl font-bold">{user?.is_admin ? "Free" : `$${tier.price}`}</span>
+                      {!user?.is_admin && <span className="text-muted-foreground text-sm">/mo</span>}
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col gap-4">
@@ -185,9 +204,11 @@ export default function AdvertiseScreen() {
                       ))}
                     </ul>
                     {/* Billing info inside card */}
-                    <p className="text-[10px] text-muted-foreground/70 text-center leading-relaxed">
-                      Subscriptions are billed monthly. Cancel anytime from your profile settings.
-                    </p>
+                    {!user?.is_admin && (
+                      <p className="text-[10px] text-muted-foreground/70 text-center leading-relaxed">
+                        Subscriptions are billed monthly. Cancel anytime from your profile settings.
+                      </p>
+                    )}
                     <Button
                       className={cn(
                         "w-full",
@@ -196,7 +217,7 @@ export default function AdvertiseScreen() {
                       disabled={isCurrent || subscribing === key}
                       onClick={() => handleTierClick(key)}
                     >
-                      {isCurrent ? "Current Plan" : subscribing === key ? "Redirecting..." : user ? "Get Started" : "Sign Up to Get Started"}
+                      {isCurrent ? "Current Plan" : subscribing === key ? "Activating..." : user ? (user.is_admin ? "Activate Free" : "Get Started") : "Sign Up to Get Started"}
                     </Button>
                   </CardContent>
                 </Card>

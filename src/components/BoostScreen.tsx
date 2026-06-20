@@ -113,19 +113,34 @@ export default function BoostScreen() {
     setBoostingPostId(postId);
     setError("");
     try {
-      const res = await fetch("/api/advertiser/boosts", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ video_id: postId, tier }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        trackEvent("boost_created", { video_id: postId, tier });
-        // Redirect to Stripe Checkout
-        window.location.href = data.stripe_checkout_url;
+      if (user?.is_admin) {
+        // Admin: free boost, no Stripe
+        const res = await fetch("/api/admin/boosts", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ video_id: postId, tier }),
+        });
+        if (res.ok) {
+          trackEvent("boost_created", { video_id: postId, tier });
+          loadData(); // refresh list
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setError(data.detail || "Failed to create boost");
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.detail || "Failed to create boost");
+        const res = await fetch("/api/advertiser/boosts", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ video_id: postId, tier }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          trackEvent("boost_created", { video_id: postId, tier });
+          window.location.href = data.stripe_checkout_url;
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setError(data.detail || "Failed to create boost");
+        }
       }
     } finally {
       setBoostingPostId(null);
@@ -300,9 +315,9 @@ export default function BoostScreen() {
                 <tier.icon size={18} className="text-white" />
                 <span className="text-white font-bold text-sm">{tier.name}</span>
                 {tier.popular && <Badge className="text-[9px] bg-amber-500/30 text-amber-300 border-0 ml-auto">POPULAR</Badge>}
-                <span className="text-white font-bold ml-auto">{!tier.popular ? `$${tier.price}` : ""}</span>
+                <span className="text-white font-bold ml-auto">{user.is_admin ? "Free" : (!tier.popular ? `$${tier.price}` : "")}</span>
               </div>
-              {tier.popular && <p className="text-white text-lg font-bold mb-1">${tier.price}</p>}
+              {tier.popular && <p className="text-white text-lg font-bold mb-1">{user.is_admin ? "Free" : `$${tier.price}`}</p>}
               <p className="text-white/50 text-xs mb-2">{tier.duration}</p>
               <ul className="space-y-1 mb-3">
                 {tier.features.map((f) => (
@@ -336,6 +351,7 @@ export default function BoostScreen() {
               promoRedemption={promoRedemption}
               onFreeBoost={handleFreeBoost}
               freeBoostLoading={freeBoostLoading}
+              isAdmin={user.is_admin}
             />
           </div>
         )}
@@ -362,7 +378,7 @@ export default function BoostScreen() {
   );
 }
 
-function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, preselectedId, promoRedemption, onFreeBoost, freeBoostLoading }: {
+function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, preselectedId, promoRedemption, onFreeBoost, freeBoostLoading, isAdmin }: {
   token: string;
   tier: string;
   boostingPostId: number | null;
@@ -373,6 +389,7 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, pre
   promoRedemption: { code: string; boost_tier: string; boost_days: number; source: string; boost_used: boolean } | null;
   onFreeBoost: (postId: number) => void;
   freeBoostLoading: boolean;
+  isAdmin?: boolean;
 }) {
   const [posts, setPosts] = useState<Array<{ id: number; title: string | null; thumbnail_url: string; image_url: string | null; type: string; category: string }>>([]);
 
@@ -420,7 +437,7 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, pre
               disabled={boostingPostId === post.id}
               className="bg-primary text-primary-foreground text-xs ember-glow"
             >
-              {boostingPostId === post.id ? "..." : `Boost $${TIERS.find((t) => t.key === tier)?.price ?? ""}`}
+              {boostingPostId === post.id ? "..." : isAdmin ? "Boost Free" : `Boost $${TIERS.find((t) => t.key === tier)?.price ?? ""}`}
             </Button>
             {promoRedemption && (
               <Button

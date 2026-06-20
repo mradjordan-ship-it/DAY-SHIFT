@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, Depends, Form
 
 from .deps import get_conn, require_admin
-from .models import TIERS, AdminBoostBody, AdminCreateBoostBody
+from .models import TIERS, AdminBoostBody, AdminCreateBoostBody, AdminAdvertiseBody
 
 api = APIRouter()
 
@@ -207,6 +207,33 @@ def admin_create_boost(body: AdminCreateBoostBody, admin=Depends(require_admin))
     for k in ("created_at", "start_date", "end_date"):
         if boost.get(k): boost[k] = boost[k].isoformat()
     return boost
+
+
+@api.post("/admin/advertise")
+def admin_advertise(body: AdminAdvertiseBody, admin=Depends(require_admin)):
+    """Admin can activate advertiser subscription for free, no Stripe."""
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # Set user as advertiser
+    cur.execute("UPDATE users SET is_advertiser = TRUE WHERE id = %s", (admin["id"],))
+
+    # Upsert advertiser subscription as active
+    cur.execute(
+        """INSERT INTO advertiser_subscriptions (user_id, tier, status, stripe_session_id)
+           VALUES (%s, %s, 'active', 'admin_free')
+           ON CONFLICT (user_id) DO UPDATE SET tier = %s, status = 'active'
+           RETURNING *""",
+        (admin["id"], body.tier, body.tier),
+    )
+    sub = dict(cur.fetchone())
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    for k in ("created_at",):
+        if sub.get(k): sub[k] = sub[k].isoformat()
+    return {"status": "active", "tier": body.tier, "message": "Advertiser subscription activated for free"}
 
 
 @api.get("/admin/videos")
