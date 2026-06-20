@@ -3,7 +3,7 @@ import type { User, Video, Review } from "../types";
 import { useAuth, useNav } from "../App";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Play, ArrowLeft, MessageCircle, Flag, Ban, ShieldCheck, Video as VideoIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { Star, Play, ArrowLeft, MessageCircle, Flag, Ban, ShieldCheck, Video as VideoIcon, ChevronDown, ChevronUp, Zap, Sparkles } from "lucide-react";
 import { RoleIcon } from "./Icons";
 import { trackEvent } from "../lib/analytics";
 
@@ -310,6 +310,14 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
                           <span className="text-[10px] text-muted-foreground">{video.likes} likes · {new Date(video.created_at).toLocaleDateString()}</span>
                         </div>
                       </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                      <Button size="sm" onClick={() => navigate("boost", { videoId: video.id })} className="h-7 px-2 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0">
+                        <Zap size={12} className="mr-0.5" /> Boost
+                      </Button>
+                      <Button size="sm" onClick={() => navigate("advertise")} className="h-7 px-2 text-xs bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0">
+                        <Sparkles size={12} className="mr-0.5" /> Ad
+                      </Button>
                     </div>
                   </div>
                 ))}
