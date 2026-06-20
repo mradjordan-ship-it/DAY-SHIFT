@@ -487,13 +487,6 @@ export default function ProfileScreen() {
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2">Quick Links</p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => navigate("boost")}
-                      className="flex items-center gap-2 bg-secondary/30 rounded-lg px-3 py-2 hover:bg-secondary/50 transition-colors"
-                    >
-                      <Zap size={14} className="text-amber-400" />
-                      <span className="text-xs text-foreground font-medium">Boost a Post</span>
-                    </button>
-                    <button
                       onClick={() => navigate("analytics")}
                       className="flex items-center gap-2 bg-secondary/30 rounded-lg px-3 py-2 hover:bg-secondary/50 transition-colors"
                     >
