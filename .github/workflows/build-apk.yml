@@ -27,7 +27,9 @@ jobs:
         run: bunx --bun vite build
 
       - name: Sync Capacitor
-        run: bunx cap sync android
+        run: |
+          bunx cap add android
+          bunx cap sync android
 
       - name: Build APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug

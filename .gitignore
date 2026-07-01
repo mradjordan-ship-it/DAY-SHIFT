@@ -28,5 +28,4 @@ take_screenshots.py
 android/app/build/
 android/.gradle/
 android/app/src/main/assets/
-android/capacitor-cordova-android-plugins/
 android/local.properties
