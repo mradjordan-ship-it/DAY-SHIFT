@@ -29,11 +29,21 @@ jobs:
       - name: Sync Capacitor
         run: bunx cap sync android
 
-      - name: Build APK
-        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/day-shift-release.keystore
 
-      - name: Upload APK
+      - name: Build Release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: dayshift
+          ANDROID_KEYSTORE_FILE: day-shift-release.keystore
+        run: cd android && chmod +x gradlew && ./gradlew assembleRelease
+
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: day-shift-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: day-shift-release
+          path: android/app/build/outputs/apk/release/app-release.apk

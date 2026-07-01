@@ -24,7 +24,9 @@ create_lower_third.py
 create_mockup.py
 record_sizzle.py
 take_screenshots.py
-# Android build outputs
+# Android release signing
+day-shift-release.keystore
+keystore-passwords.txt
 android/app/build/
 android/.gradle/
 android/app/src/main/assets/
