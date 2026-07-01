@@ -1,0 +1,32 @@
+[
+  {
+    "content": "[backend-pay] Strengthen pay_rate validation: reject zero, reject garbage text after number, better error messages",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[backend-date] Hard-code event_date validation: reject malformed dates instead of silently passing",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[backend-overlap] Add time-based overlap detection in match creation (not just date-based)",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend-post] Improve PostScreen: surface server-side validation errors inline alongside client-side checks",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "[frontend-match] Improve FeedScreen/MatchSet: show detailed overlap error with shift details",
+    "id": "5",
+    "status": "completed"
+  },
+  {
+    "content": "[test] Run end-to-end edge-case tests via curl to verify all validations",
+    "id": "6",
+    "status": "completed"
+  }
+]

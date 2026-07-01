@@ -16,7 +16,6 @@ dependencies = [
     "aiofiles>=23.2.1",
     "imageio-ffmpeg>=0.6.0",
     "qrcode[pil]>=8.2",
-    "stripe>=15.1.0",
     "feedparser>=6.0.12",
     "openpyxl>=3.1.5",
     "slowapi>=0.1.9",
@@ -26,7 +25,25 @@ dependencies = [
     "lxml>=6.1.1",
     "playwright>=1.60.0",
     "edge-tts>=7.2.8",
+    "google-genai>=2.8.0",
+    "sqlalchemy>=2.0.50",
+    "reportlab>=4.5.1",
+    "paypal-checkout-serversdk>=1.0.3",
+    "python-whois>=0.9.6",
+    "dnspython>=2.8.0",
+    "weasyprint>=69.0",
 ]
 
 [tool.uv]
 exclude-newer = "14 days"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+]

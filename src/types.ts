@@ -116,7 +116,6 @@ export type Screen =
   | "review"
   | "admin"
   | "support"
-  | "sponsor"
   | "terms"
   | "privacy"
   | "onboarding"
@@ -134,8 +133,7 @@ export interface PostBoost {
   status: "pending" | "active" | "expired" | "rejected";
   start_date: string | null;
   end_date: string | null;
-  stripe_session_id?: string;
-  stripe_payment_intent_id?: string;
+  paypal_order_id?: string;
   payment_status: "unpaid" | "paid" | "failed" | "refunded";
   admin_approved: boolean;
   created_at: string;
@@ -157,4 +155,13 @@ export interface AdvertiserSubscription {
   created_at: string;
 }
 
-export type FeedTab = "all" | "workers" | "employers";
+export type FeedTab = "all" | "crew" | "kitchens";
+// "all" = combined crew + kitchens (main feed only)
+// "crew" = type=worker only
+// "kitchens" = type=employer only
+
+export type FeedSection = "feed" | "events" | "forsale";
+// "feed"    → main feed, shows All/Crew/Kitchens tabs, default tab="all"
+// "events"  → events-only, no internal tabs, forces category=event
+// "forsale" → for-sale-only, no internal tabs, forces category=sale
+

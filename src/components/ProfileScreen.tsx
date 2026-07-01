@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, HardHat, Building2, Bell, BellOff, Video as VideoIcon, Lock, ChevronDown, ChevronUp
+  Settings, LogOut, Camera, Star, Trash2, Pencil, X, AlertTriangle, MessageCircle, DollarSign, Zap, Sparkles, ChefHat, Store, Bell, BellOff, Video as VideoIcon, Lock, ChevronDown, ChevronUp
 } from "lucide-react";
 import { RoleIcon, CategoryIcon, SaleIcon, EventIcon } from "./Icons";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,8 @@ export default function ProfileScreen() {
   const [postForm, setPostForm] = useState<{ title: string; description: string; repost: boolean; category: string; price: string; event_date: string; event_time: string; aspect_ratio: string; file?: File }>({ title: "", description: "", repost: false, category: "general", price: "", event_date: "", event_time: "", aspect_ratio: "9:16" });
   const [postSaving, setPostSaving] = useState(false);
   const [expandedPost, setExpandedPost] = useState<number | null>(null);
+  const [deletingVideoId, setDeletingVideoId] = useState<number | null>(null);
+  const [videoError, setVideoError] = useState("");
 
   // Password change state
   const [pwOpen, setPwOpen] = useState(false);
@@ -151,12 +153,22 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteVideo = async (id: number) => {
+    if (deletingVideoId !== null) return;
     if (!window.confirm("Delete this video?")) return;
-    await fetch(`/api/videos/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setVideos((prev) => prev.filter((v) => v.id !== id));
+    setDeletingVideoId(id);
+    setVideoError("");
+    try {
+      const res = await fetch(`/api/videos/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete video");
+      setVideos((prev) => prev.filter((v) => v.id !== id));
+    } catch (err: unknown) {
+      setVideoError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setDeletingVideoId(null);
+    }
   };
 
   const openEditPost = (video: Video) => {
@@ -211,11 +223,14 @@ export default function ProfileScreen() {
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      await fetch("/api/users/me", {
+      const res = await fetch("/api/users/me", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) throw new Error("Failed to delete account");
       logout();
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setDeleting(false);
     }
@@ -383,7 +398,7 @@ export default function ProfileScreen() {
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
-                  <Building2 size={14} className="text-purple-400" />
+                  <Store size={14} className="text-purple-400" />
                 </div>
                 <div className="text-left">
                   <p className="font-semibold text-foreground text-sm">Dashboard</p>
@@ -495,7 +510,7 @@ export default function ProfileScreen() {
                       onClick={() => navigate("analytics")}
                       className="flex items-center gap-2 bg-secondary/30 rounded-lg px-3 py-2 hover:bg-secondary/50 transition-colors"
                     >
-                      <Building2 size={14} className="text-purple-400" />
+                      <Store size={14} className="text-purple-400" />
                       <span className="text-xs text-foreground font-medium">Analytics</span>
                     </button>
                     {dashData.advertiser_status.active && (
@@ -565,6 +580,12 @@ export default function ProfileScreen() {
               </div>
             </button>
 
+            {videoError && (
+              <div className="px-3 py-2 bg-destructive/10 border-t border-destructive/20 text-destructive text-xs">
+                {videoError}
+              </div>
+            )}
+
             {expandedPost === -1 && (
               <div className="border-t border-border divide-y divide-border">
                 {videos.map((video) => (
@@ -602,8 +623,12 @@ export default function ProfileScreen() {
                       <Button size="sm" variant="outline" onClick={() => openEditPost(video)} className="text-xs flex-shrink-0">
                         <Pencil size={12} className="mr-1" /> Edit
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleDeleteVideo(video.id)} className="text-xs text-destructive border-destructive/40 hover:bg-destructive/10 flex-shrink-0">
-                        <Trash2 size={12} />
+                      <Button size="sm" variant="outline" onClick={() => handleDeleteVideo(video.id)} disabled={deletingVideoId === video.id} className="text-xs text-destructive border-destructive/40 hover:bg-destructive/10 flex-shrink-0">
+                        {deletingVideoId === video.id ? (
+                          <div className="w-3 h-3 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
                       </Button>
                       <div className="flex-1" />
                       <Button size="sm" onClick={() => navigate("boost", { videoId: video.id })} className="h-7 px-2 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0">
@@ -833,7 +858,7 @@ export default function ProfileScreen() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(user?.role === "worker" || user?.is_admin) && <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>}
+                    {(user?.role === "worker" || user?.is_admin) && <SelectItem value="crew"><ChefHat size={12} className="inline mr-1" /> Crew</SelectItem>}
                     <SelectItem value="sale"><SaleIcon className="w-3 h-3 inline mr-1" />For Sale</SelectItem>
                     <SelectItem value="event"><EventIcon className="w-3 h-3 inline mr-1" />Event</SelectItem>
                   </SelectContent>
@@ -919,12 +944,17 @@ export default function ProfileScreen() {
           <div className="pt-2 border-t border-border mt-2 sticky bottom-0 bg-card">
             <button
               onClick={() => {
-                setPostEditOpen(false);
                 if (editingPost) handleDeleteVideo(editingPost.id);
+                setPostEditOpen(false);
               }}
-              className="w-full text-xs text-destructive/80 hover:text-destructive transition-colors text-center py-1 flex items-center justify-center gap-1.5 font-medium"
+              disabled={deletingVideoId !== null}
+              className="w-full text-xs text-destructive/80 hover:text-destructive transition-colors text-center py-1 flex items-center justify-center gap-1.5 font-medium disabled:opacity-50"
             >
-              <Trash2 size={13} />
+              {deletingVideoId !== null ? (
+                <div className="w-3 h-3 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Trash2 size={13} />
+              )}
               Delete Post
             </button>
           </div>

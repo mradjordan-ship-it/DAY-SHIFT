@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from .deps import get_conn, get_current_user
 from .models import MessageBody
+from .sanitize import sanitize_text
 
 api = APIRouter()
 
@@ -70,7 +71,7 @@ def send_message(match_id: int, body: MessageBody, current_user=Depends(get_curr
     try:
         cur.execute(
             "INSERT INTO messages (match_id, sender_id, content) VALUES (%s, %s, %s) RETURNING *",
-            (match_id, current_user["id"], body.content),
+            (match_id, current_user["id"], sanitize_text(body.content, max_length=2000)),
         )
         msg = dict(cur.fetchone())
         conn.commit()
@@ -104,6 +105,18 @@ def send_message(match_id: int, body: MessageBody, current_user=Depends(get_curr
 def mark_read(message_id: int, current_user=Depends(get_current_user)):
     conn = get_conn()
     cur = conn.cursor()
+    # Verify the message belongs to a match the user participates in
+    cur.execute(
+        """SELECT 1 FROM messages m
+           JOIN matches mt ON m.match_id = mt.id
+           WHERE m.id = %s AND m.sender_id != %s
+             AND (mt.worker_id = %s OR mt.employer_id = %s)""",
+        (message_id, current_user["id"], current_user["id"], current_user["id"]),
+    )
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        raise HTTPException(403, "Cannot mark this message as read")
     cur.execute(
         "UPDATE messages SET read=TRUE WHERE id=%s AND sender_id!=%s",
         (message_id, current_user["id"]),

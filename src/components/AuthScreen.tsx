@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TermsContent, PrivacyContent } from "./LegalContent";
-import { Camera, Building2, X, Eye, EyeOff, HardHat, Megaphone, Ban } from "lucide-react";
+import { Camera, Store, X, Eye, EyeOff, ChefHat, Megaphone, Ban } from "lucide-react";
 import { trackEvent } from "../lib/analytics";
 
 export default function AuthScreen({
@@ -570,8 +570,8 @@ export default function AuthScreen({
             <p className="text-xs text-muted-foreground text-center">I am a...</p>
           <div className="grid grid-cols-2 gap-2">
             {([
-              { key: "worker", label: "Crew", icon: <HardHat size={14} /> },
-              { key: "employer", label: "Kitchen", icon: <Building2 size={14} /> },
+              { key: "worker", label: "Crew", icon: <ChefHat size={14} /> },
+              { key: "employer", label: "Kitchen", icon: <Store size={14} /> },
             ] as const).map(({ key, label, icon }) => (
               <button
                 key={key}
@@ -635,7 +635,7 @@ export default function AuthScreen({
                 onClick={() => fileInputRef.current?.click()}
                 className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl p-6 text-muted-foreground hover:border-primary/60 hover:text-primary transition-all bg-secondary`}
               >
-                {isWorker ? <Camera className="w-8 h-8" /> : <Building2 className="w-8 h-8" />}
+                {isWorker ? <Camera className="w-8 h-8" /> : <Store className="w-8 h-8" />}
                 <span className="text-sm font-medium">Tap to upload {imageLabel.toLowerCase()}</span>
                 <span className="text-xs opacity-60">JPG, PNG, WebP — max 10 MB</span>
               </button>

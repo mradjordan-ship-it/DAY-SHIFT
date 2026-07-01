@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { PostBoost, AdvertiserSubscription } from "../types";
 import { useAuth, useNav } from "../App";
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Zap, Eye, Star, Crown, ExternalLink, Building2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Zap, Eye, Star, Crown, ExternalLink, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { trackEvent } from "../lib/analytics";
@@ -52,38 +52,34 @@ export default function BoostScreen() {
   const [checkingPayment, setCheckingPayment] = useState(false);
   const [promoRedemption, setPromoRedemption] = useState<{ code: string; boost_tier: string; boost_days: number; source: string; boost_used: boolean } | null>(null);
   const [freeBoostLoading, setFreeBoostLoading] = useState(false);
+  const [welcomeBoostAvailable, setWelcomeBoostAvailable] = useState(false);
 
-  // Check for Stripe redirect success
+  // Check for PayPal redirect success
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const success = params.get("success");
-    const sessionId = params.get("session_id");
+    const paypal = params.get("paypal");
+    const paypalToken = params.get("token");
 
-    if (success && sessionId && token) {
+    if (success && paypal === "1" && paypalToken) {
+      // PayPal return: capture the order
       setCheckingPayment(true);
-      // Clear URL params
       window.history.replaceState({}, "", window.location.pathname);
 
-      // Poll for payment confirmation (webhook may take a few seconds)
-      const checkPayment = async () => {
-        for (let i = 0; i < 10; i++) {
-          await new Promise((r) => setTimeout(r, 2000));
-          const res = await fetch("/api/advertiser/boosts", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const paid = data.find((b: PostBoost) => b.stripe_session_id === sessionId && b.payment_status === "paid");
-            if (paid) {
-              setBoosts(data);
-              setCheckingPayment(false);
-              return;
+      (async () => {
+        try {
+          const captureRes = await fetch(`/api/paypal/capture/${paypalToken}`, { method: "POST" });
+          const captureData = await captureRes.json();
+          if (captureData.status === "completed") {
+            // Refresh boosts to show the new active one
+            if (token) {
+              const boostRes = await fetch("/api/advertiser/boosts", { headers: { Authorization: `Bearer ${token}` } });
+              if (boostRes.ok) setBoosts(await boostRes.json());
             }
           }
-        }
+        } catch {}
         setCheckingPayment(false);
-      };
-      checkPayment();
+      })();
     }
   }, [token]);
 
@@ -93,12 +89,15 @@ export default function BoostScreen() {
       try {
         const boostRes = await fetch("/api/advertiser/boosts", { headers: { Authorization: `Bearer ${token}` } });
         if (boostRes.ok) setBoosts(await boostRes.json());
-        // Check for promo redemption
+        // Check for promo redemption + welcome boost
         const promoRes = await fetch("/api/promo/my-redemption", { headers: { Authorization: `Bearer ${token}` } });
         if (promoRes.ok) {
           const promoData = await promoRes.json();
           if (promoData.redeemed && !promoData.boost_used && promoData.boost_tier) {
             setPromoRedemption(promoData);
+          }
+          if (promoData.welcome_boost_available) {
+            setWelcomeBoostAvailable(true);
           }
         }
       } finally {
@@ -114,7 +113,7 @@ export default function BoostScreen() {
     setError("");
     try {
       if (user?.is_admin) {
-        // Admin: free boost, no Stripe
+        // Admin: free boost, no payment gateway
         const res = await fetch("/api/admin/boosts", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -128,7 +127,8 @@ export default function BoostScreen() {
           setError(data.detail || "Failed to create boost");
         }
       } else {
-        const res = await fetch("/api/advertiser/boosts", {
+        // PayPal checkout for boosts
+        const res = await fetch("/api/paypal/boosts/checkout", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ video_id: postId, tier }),
@@ -136,7 +136,7 @@ export default function BoostScreen() {
         if (res.ok) {
           const data = await res.json();
           trackEvent("boost_created", { video_id: postId, tier });
-          window.location.href = data.stripe_checkout_url;
+          window.location.href = data.paypal_approval_url;
         } else {
           const data = await res.json().catch(() => ({}));
           setError(data.detail || "Failed to create boost");
@@ -167,8 +167,9 @@ export default function BoostScreen() {
       });
       const data = await res.json();
       if (res.ok) {
-        trackEvent("free_promo_boost", { video_id: postId, source: promoRedemption?.source });
+        trackEvent("free_promo_boost", { video_id: postId, source: promoRedemption?.source ?? "welcome" });
         setPromoRedemption(null);
+        setWelcomeBoostAvailable(false);
         // Refresh boosts
         const boostRes = await fetch("/api/advertiser/boosts", { headers: { Authorization: `Bearer ${token}` } });
         if (boostRes.ok) setBoosts(await boostRes.json());
@@ -292,6 +293,19 @@ export default function BoostScreen() {
           </div>
         )}
 
+        {/* Welcome boost banner (new user signup bonus) */}
+        {welcomeBoostAvailable && !promoRedemption && (
+          <div className="mb-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap size={16} className="text-green-400" />
+              <span className="text-white font-bold text-sm">Welcome! Free Boost Available 🎉</span>
+            </div>
+            <p className="text-white/60 text-xs mb-3">
+              As a new Day Shift user, you get one free Boost (7 days) to promote your first post. Select a post below — no payment needed.
+            </p>
+          </div>
+        )}
+
         {/* Free promo boost banner */}
         {promoRedemption && (
           <div className="mb-4 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-xl p-4">
@@ -352,6 +366,7 @@ export default function BoostScreen() {
               onFreeBoost={handleFreeBoost}
               freeBoostLoading={freeBoostLoading}
               isAdmin={user.is_admin}
+              welcomeBoostAvailable={welcomeBoostAvailable}
             />
           </div>
         )}
@@ -378,7 +393,7 @@ export default function BoostScreen() {
   );
 }
 
-function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, preselectedId, promoRedemption, onFreeBoost, freeBoostLoading, isAdmin }: {
+function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, preselectedId, promoRedemption, onFreeBoost, freeBoostLoading, isAdmin, welcomeBoostAvailable }: {
   token: string;
   tier: string;
   boostingPostId: number | null;
@@ -390,6 +405,7 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, pre
   onFreeBoost: (postId: number) => void;
   freeBoostLoading: boolean;
   isAdmin?: boolean;
+  welcomeBoostAvailable?: boolean;
 }) {
   const [posts, setPosts] = useState<Array<{ id: number; title: string | null; thumbnail_url: string; image_url: string | null; type: string; category: string }>>([]);
 
@@ -422,7 +438,7 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, pre
               <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-muted-foreground" />
+                <Store className="w-5 h-5 text-muted-foreground" />
               </div>
             )}
           </div>
@@ -437,16 +453,20 @@ function PostSelector({ token, tier, boostingPostId, onBoost, error, userId, pre
               disabled={boostingPostId === post.id}
               className="bg-primary text-primary-foreground text-xs ember-glow"
             >
-              {boostingPostId === post.id ? "..." : isAdmin ? "Boost Free" : `Boost $${TIERS.find((t) => t.key === tier)?.price ?? ""}`}
+              {boostingPostId === post.id ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : isAdmin ? "Boost Free" : `Boost $${TIERS.find((t) => t.key === tier)?.price ?? ""}`}
             </Button>
-            {promoRedemption && (
+            {(promoRedemption || welcomeBoostAvailable) && (
               <Button
                 size="sm"
                 onClick={() => onFreeBoost(post.id)}
                 disabled={freeBoostLoading}
                 className="bg-amber-500 text-black text-xs font-bold hover:bg-amber-400"
               >
-                {freeBoostLoading ? "..." : "Use Free Boost"}
+                {freeBoostLoading ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : promoRedemption ? "Use Free Boost" : "Use Welcome Boost"}
               </Button>
             )}
           </div>

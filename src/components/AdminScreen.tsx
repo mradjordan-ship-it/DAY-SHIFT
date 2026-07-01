@@ -35,11 +35,12 @@ import {
   User,
   DollarSign,
   Zap,
-  HardHat,
-  Building2,
+  ChefHat,
+  Store,
   Calendar,
   Tag,
   Pencil,
+  Eye,
   X,
   ImageIcon,
   Sparkles,
@@ -142,7 +143,7 @@ interface AdminReport {
   created_at: string;
 }
 
-type Tab = "overview" | "users" | "videos" | "matches" | "reports" | "appeals" | "content-flags" | "tips" | "scheduled";
+type Tab = "overview" | "users" | "videos" | "matches" | "reports" | "appeals" | "content-flags" | "scheduled";
 
 export default function AdminScreen() {
   const { user, token } = useAuth();
@@ -154,7 +155,6 @@ export default function AdminScreen() {
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [supportThreads, setSupportThreads] = useState<any[]>([]);
   const [sponsorContacts, setSponsorContacts] = useState<any[]>([]);
-  const [tips, setTips] = useState<any[]>([]);
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [appeals, setAppeals] = useState<any[]>([]);
   const [contentFlags, setContentFlags] = useState<any[]>([]);
@@ -166,14 +166,12 @@ export default function AdminScreen() {
 
   const fetchSupport = async () => {
     const headers = { Authorization: `Bearer ${token}` };
-    const [supRes, spoRes, tipsRes] = await Promise.all([
+    const [supRes, spoRes] = await Promise.all([
       fetch("/api/admin/support", { headers }),
       fetch("/api/admin/sponsors", { headers }),
-      fetch("/api/admin/tips", { headers }),
     ]);
     if (supRes.ok) setSupportThreads(await supRes.json());
     if (spoRes.ok) setSponsorContacts(await spoRes.json());
-    if (tipsRes.ok) setTips(await tipsRes.json());
   };
 
   useEffect(() => {
@@ -182,7 +180,7 @@ export default function AdminScreen() {
       setLoading(true);
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [statsRes, usersRes, videosRes, matchesRes, reportsRes, supRes, spoRes, tipsRes, schedRes] = await Promise.all([
+        const [statsRes, usersRes, videosRes, matchesRes, reportsRes, supRes, spoRes, schedRes] = await Promise.all([
           fetch("/api/admin/stats", { headers }),
           fetch("/api/admin/users", { headers }),
           fetch("/api/admin/videos", { headers }),
@@ -190,7 +188,6 @@ export default function AdminScreen() {
           fetch("/api/admin/reports", { headers }),
           fetch("/api/admin/support", { headers }),
           fetch("/api/admin/sponsors", { headers }),
-          fetch("/api/admin/tips", { headers }),
           fetch("/api/admin/scheduled", { headers }),
         ]);
         if (statsRes.ok) setStats(await statsRes.json());
@@ -200,7 +197,6 @@ export default function AdminScreen() {
         if (reportsRes.ok) setReports(await reportsRes.json());
         if (supRes.ok) setSupportThreads(await supRes.json());
         if (spoRes.ok) setSponsorContacts(await spoRes.json());
-        if (tipsRes.ok) setTips(await tipsRes.json());
         if (schedRes.ok) setScheduledPosts(await schedRes.json());
 
         // Appeals and content flags
@@ -254,7 +250,8 @@ export default function AdminScreen() {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) setVideos((prev) => prev.filter((v) => v.id !== videoId));
+    if (!res.ok) throw new Error("Failed to delete video");
+    setVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
 
   const boostVideo = async (videoId: number, tier: string, durationDays: number) => {
@@ -334,7 +331,6 @@ export default function AdminScreen() {
     { key: "reports", label: `Reports${openReports > 0 ? ` (${openReports})` : ""}`, icon: <Flag size={14} /> },
     { key: "appeals", label: `Appeals${appeals.filter((a) => a.status === "pending").length > 0 ? ` (${appeals.filter((a) => a.status === "pending").length})` : ""}`, icon: <MessageCircle size={14} /> },
     { key: "content-flags", label: `Flags${contentFlags.length > 0 ? ` (${contentFlags.length})` : ""}`, icon: <AlertTriangle size={14} /> },
-    { key: "tips", label: `Tips${tips.length > 0 ? ` (${tips.length})` : ""}`, icon: <DollarSign size={14} /> },
     { key: "scheduled", label: `Scheduled${scheduledPosts.length > 0 ? ` (${scheduledPosts.length})` : ""}`, icon: <Clock size={14} /> },
   ];
 
@@ -396,13 +392,11 @@ export default function AdminScreen() {
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ action }),
               });
-              if (res.ok) {
-                setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, status: "reviewed", admin_action: action } : r)));
-              }
+              if (!res.ok) throw new Error("Failed to review report");
+              setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, status: "reviewed", admin_action: action } : r)));
             }}
           />
         )}
-        {tab === "tips" && <TipsTab tips={tips} onRefresh={fetchSupport} />}
         {tab === "appeals" && (
           <AppealsTab
             appeals={appeals}
@@ -425,20 +419,20 @@ export default function AdminScreen() {
         )}
       </div>
 
-      {/* Edit Post Dialog */}
+      {/* View Post Dialog (read-only) */}
       {editingVideo && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Bebas Neue'" }}>
-                Edit Post #{editingVideo.id}
+                View Post #{editingVideo.id}
               </h3>
               <button onClick={() => setEditingVideo(null)} className="text-muted-foreground hover:text-foreground">
                 <X size={20} />
               </button>
             </div>
             <div className="p-4 space-y-3">
-              {/* Thumbnail */}
+              {/* Thumbnail / Video Preview */}
               {(editingVideo.image_url || editingVideo.video_url) && (
                 <div className="rounded-lg overflow-hidden bg-black">
                   {editingVideo.image_url ? (
@@ -448,106 +442,101 @@ export default function AdminScreen() {
                   )}
                 </div>
               )}
-              <div className="space-y-0.5">
-                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Title</Label>
-                <Input value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-              </div>
-              <div className="space-y-0.5">
-                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Description</Label>
-                <Textarea value={editForm.description || ""} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={3} className="bg-secondary border-border text-sm resize-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</Label>
-                  <Select value={editForm.category || "general"} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
-                    <SelectTrigger className="bg-secondary border-border h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general"><Sparkles size={12} className="inline mr-1" /> General</SelectItem>
-                      <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>
-                      <SelectItem value="kitchen"><Building2 size={12} className="inline mr-1" /> Kitchen</SelectItem>
-                      <SelectItem value="sale"><Tag size={12} className="inline mr-1" /> For Sale</SelectItem>
-                      <SelectItem value="event"><Calendar size={12} className="inline mr-1" /> Event</SelectItem>
-                      <SelectItem value="sponsored"><Star size={12} className="inline mr-1 fill-primary text-primary" /> Sponsored</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Aspect Ratio</Label>
-                  <Select value={editForm.aspect_ratio || "9:16"} onValueChange={(v) => setEditForm({ ...editForm, aspect_ratio: v })}>
-                    <SelectTrigger className="bg-secondary border-border h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="9:16">9:16</SelectItem>
-                      <SelectItem value="4:5">4:5</SelectItem>
-                      <SelectItem value="1:1">1:1</SelectItem>
-                      <SelectItem value="16:9">16:9</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Location</Label>
-                  <Input value={editForm.location || ""} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-                </div>
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Pay Rate</Label>
-                  <Input value={editForm.pay_rate || ""} onChange={(e) => setEditForm({ ...editForm, pay_rate: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cuisine Type</Label>
-                  <Input value={editForm.cuisine_type || ""} onChange={(e) => setEditForm({ ...editForm, cuisine_type: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-                </div>
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Hours</Label>
-                  <Input value={editForm.hours || ""} onChange={(e) => setEditForm({ ...editForm, hours: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Experience</Label>
-                  <Select value={editForm.experience_level || ""} onValueChange={(v) => setEditForm({ ...editForm, experience_level: v })}>
-                    <SelectTrigger className="bg-secondary border-border h-8 text-xs">
-                      <SelectValue placeholder="Level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="entry">Entry Level</SelectItem>
-                      <SelectItem value="mid">2–5 Years</SelectItem>
-                      <SelectItem value="senior">5+ Years</SelectItem>
-                      <SelectItem value="executive">Executive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-0.5">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</Label>
-                  <Input value={editForm.price || ""} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-                </div>
-              </div>
-              {(editForm.category === "event" || editingVideo.category === "event") && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-0.5">
-                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Event Date</Label>
-                    <Input type="date" value={editForm.event_date || ""} onChange={(e) => setEditForm({ ...editForm, event_date: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-                  </div>
-                  <div className="space-y-0.5">
-                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Event Time</Label>
-                    <Input type="time" value={editForm.event_time || ""} onChange={(e) => setEditForm({ ...editForm, event_time: e.target.value })} className="bg-secondary border-border h-8 text-sm" />
-                  </div>
+
+              {/* Title */}
+              {editingVideo.title && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Title</p>
+                  <p className="text-sm font-medium text-foreground">{editingVideo.title}</p>
                 </div>
               )}
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setEditingVideo(null)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={saveEditVideo} disabled={editSaving} className="flex-1 bg-primary text-primary-foreground">
-                  {editSaving ? "Saving..." : "Save Changes"}
-                </Button>
+
+              {/* Description */}
+              {editingVideo.description && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Description</p>
+                  <p className="text-sm text-foreground/80 whitespace-pre-wrap">{editingVideo.description}</p>
+                </div>
+              )}
+
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                {editingVideo.category && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Category</p>
+                    <p className="capitalize text-foreground font-medium">{editingVideo.category}</p>
+                  </div>
+                )}
+                {editingVideo.aspect_ratio && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Aspect Ratio</p>
+                    <p className="text-foreground">{editingVideo.aspect_ratio}</p>
+                  </div>
+                )}
+                {editingVideo.location && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Location</p>
+                    <p className="text-foreground">{editingVideo.location}</p>
+                  </div>
+                )}
+                {editingVideo.pay_rate && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Pay Rate</p>
+                    <p className="text-foreground">{editingVideo.pay_rate}</p>
+                  </div>
+                )}
+                {editingVideo.cuisine_type && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cuisine Type</p>
+                    <p className="text-foreground">{editingVideo.cuisine_type}</p>
+                  </div>
+                )}
+                {editingVideo.hours && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Hours</p>
+                    <p className="text-foreground">{editingVideo.hours}</p>
+                  </div>
+                )}
+                {editingVideo.experience_level && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Experience</p>
+                    <p className="capitalize text-foreground">{editingVideo.experience_level}</p>
+                  </div>
+                )}
+                {editingVideo.price && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</p>
+                    <p className="text-foreground">{editingVideo.price}</p>
+                  </div>
+                )}
+                {(editingVideo.category === "event") && editingVideo.event_date && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Event Date</p>
+                    <p className="text-foreground">{editingVideo.event_date}{editingVideo.event_time ? ` at ${editingVideo.event_time}` : ''}</p>
+                  </div>
+                )}
               </div>
+
+              {/* Stats row */}
+              <div className="flex items-center gap-3 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                {editingVideo.likes_count != null && (
+                  <span className="flex items-center gap-1"><Heart size={11} /> {editingVideo.likes_count}</span>
+                )}
+                {editingVideo.comments_count != null && (
+                  <span className="flex items-center gap-1"><MessageCircle size={11} /> {editingVideo.comments_count}</span>
+                )}
+                {editingVideo.views_count != null && (
+                  <span className="flex items-center gap-1"><Eye size={11} /> {editingVideo.views_count}</span>
+                )}
+                <span className="ml-auto text-[10px]">
+                  {new Date(editingVideo.created_at).toLocaleDateString()}
+                </span>
+              </div>
+
+              {/* Close button */}
+              <Button variant="outline" onClick={() => setEditingVideo(null)} className="w-full mt-2">
+                Close
+              </Button>
             </div>
           </div>
         </div>
@@ -724,11 +713,12 @@ function UsersTab({
   );
 }
 
-function VideosTab({ videos, onDelete, onBoost, onEdit }: { videos: AdminVideo[]; onDelete: (id: number) => void; onBoost: (id: number, tier: string, days: number) => Promise<boolean>; onEdit: (video: AdminVideo) => void }) {
+function VideosTab({ videos, onDelete, onBoost, onEdit }: { videos: AdminVideo[]; onDelete: (id: number) => Promise<void>; onBoost: (id: number, tier: string, days: number) => Promise<boolean>; onEdit: (video: AdminVideo) => void }) {
   const [expandedUser, setExpandedUser] = useState<number | null>(null);
   const [boostingVideoId, setBoostingVideoId] = useState<number | null>(null);
-  const [boostTier, setBoostTier] = useState<string>("boost");
-  const [boostDays, setBoostDays] = useState<number>(1);
+  const [boostTier, setBoostTier] = useState<Record<number, string>>({});
+  const [deletingVideo, setDeletingVideo] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Group videos by user
   const groupedByUser = videos.reduce((acc, v) => {
@@ -747,16 +737,36 @@ function VideosTab({ videos, onDelete, onBoost, onEdit }: { videos: AdminVideo[]
 
   const handleBoost = async (videoId: number) => {
     setBoostingVideoId(videoId);
-    const success = await onBoost(videoId, boostTier, boostDays);
+    const days = 7; // fixed 7-day boost
+    const tier = boostTier[videoId] || "boost";
+    const success = await onBoost(videoId, tier, days);
     setBoostingVideoId(null);
     if (success) {
-      alert(`Post boosted for ${boostDays} day${boostDays > 1 ? "s" : ""}!`);
+      alert(`Post boosted for ${days} days!`);
+    } else {
+      alert("Boost failed — the post may already have an active boost.");
+    }
+  };
+
+  const handleDelete = async (videoId: number) => {
+    if (deletingVideo) return;
+    setDeleteError(null);
+    setDeletingVideo(videoId);
+    try {
+      await onDelete(videoId);
+    } catch {
+      setDeleteError("Failed to delete video. Please try again.");
+    } finally {
+      setDeletingVideo(null);
     }
   };
 
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground mb-2">Grouped by user — tap to expand and see all posts</p>
+      {deleteError && deletingVideo === null && (
+        <p className="text-xs text-destructive mb-2">{deleteError}</p>
+      )}
       {users.map(([userId, data]) => (
         <div key={userId} className="bg-card border border-border rounded-xl overflow-hidden">
           {/* User header row */}
@@ -832,19 +842,24 @@ function VideosTab({ videos, onDelete, onBoost, onEdit }: { videos: AdminVideo[]
                       onClick={() => onEdit(v)}
                       className="text-xs flex-shrink-0"
                     >
-                      <Pencil size={12} className="mr-1" /> Edit
+                      <Eye size={12} className="mr-1" /> View
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onDelete(v.id)}
+                      onClick={() => handleDelete(v.id)}
+                      disabled={deletingVideo === v.id}
                       className="text-xs text-destructive border-destructive/40 hover:bg-destructive/10 flex-shrink-0"
                     >
-                      <Trash2 size={12} />
+                      {deletingVideo === v.id ? (
+                        <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 size={12} />
+                      )}
                     </Button>
                     <div className="flex-1" />
                     <Zap size={12} className="text-amber-400" />
-                    <Select value={boostTier} onValueChange={setBoostTier}>
+                    <Select value={boostTier[v.id] || "boost"} onValueChange={(val) => setBoostTier((prev) => ({ ...prev, [v.id]: val }))}>
                       <SelectTrigger className="h-7 w-24 text-xs bg-secondary border-border">
                         <SelectValue />
                       </SelectTrigger>
@@ -854,23 +869,11 @@ function VideosTab({ videos, onDelete, onBoost, onEdit }: { videos: AdminVideo[]
                         <SelectItem value="premium">Premium</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={String(boostDays)} onValueChange={(v) => setBoostDays(Number(v))}>
-                      <SelectTrigger className="h-7 w-20 text-xs bg-secondary border-border">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 day</SelectItem>
-                        <SelectItem value="3">3 days</SelectItem>
-                        <SelectItem value="7">7 days</SelectItem>
-                        <SelectItem value="14">14 days</SelectItem>
-                        <SelectItem value="30">30 days</SelectItem>
-                      </SelectContent>
-                    </Select>
                     <Button
                       size="sm"
                       onClick={() => handleBoost(v.id)}
                       disabled={boostingVideoId === v.id}
-                      className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                      className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0"
                     >
                       {boostingVideoId === v.id ? "..." : "Boost"}
                     </Button>
@@ -962,7 +965,7 @@ function MatchesTab({ matches }: { matches: AdminMatch[] }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-foreground">
-                <HardHat size={12} className="inline mr-1" />{m.worker_name} ↔ <Building2 size={12} className="inline mx-1" />{m.employer_name}
+                <ChefHat size={12} className="inline mr-1" />{m.worker_name} ↔ <Store size={12} className="inline mx-1" />{m.employer_name}
               </p>
               <p className="text-[11px] text-muted-foreground">
                 ID: {m.id} · {new Date(m.created_at).toLocaleDateString()}
@@ -991,10 +994,25 @@ function ReportsTab({
   onReview,
 }: {
   reports: AdminReport[];
-  onReview: (reportId: number, action: string) => void;
+  onReview: (reportId: number, action: string) => Promise<void>;
 }) {
+  const [reviewingReport, setReviewingReport] = useState<number | null>(null);
+  const [reportActionError, setReportActionError] = useState<string | null>(null);
   const openReports = reports.filter((r) => r.status === "open");
   const closedReports = reports.filter((r) => r.status !== "open");
+
+  const handleReview = async (reportId: number, action: string) => {
+    if (reviewingReport) return;
+    setReportActionError(null);
+    setReviewingReport(reportId);
+    try {
+      await onReview(reportId, action);
+    } catch {
+      setReportActionError("Failed to submit action. Please try again.");
+    } finally {
+      setReviewingReport(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -1021,18 +1039,60 @@ function ReportsTab({
                   <p className="text-xs text-muted-foreground bg-secondary rounded-lg px-3 py-1.5 mb-2">"{r.comment}"</p>
                 )}
                 <p className="text-[10px] text-muted-foreground mb-2">{new Date(r.created_at).toLocaleString()}</p>
+                {reportActionError && reviewingReport === null && (
+                  <p className="text-[11px] text-destructive mb-2">{reportActionError}</p>
+                )}
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => onReview(r.id, "dismiss")} className="text-xs flex-1">
-                    <XCircle size={12} className="mr-1" /> Dismiss
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReview(r.id, "dismiss")}
+                    disabled={reviewingReport === r.id}
+                    className="text-xs flex-1"
+                  >
+                    {reviewingReport === r.id ? (
+                      <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <><XCircle size={12} className="mr-1" /> Dismiss</>
+                    )}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => onReview(r.id, "warn")} className="text-xs flex-1 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10">
-                    <AlertTriangle size={12} className="mr-1" /> Warn
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReview(r.id, "warn")}
+                    disabled={reviewingReport === r.id}
+                    className="text-xs flex-1 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10"
+                  >
+                    {reviewingReport === r.id ? (
+                      <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <><AlertTriangle size={12} className="mr-1" /> Warn</>
+                    )}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => onReview(r.id, "remove_content")} className="text-xs flex-1 border-orange-500/40 text-orange-400 hover:bg-orange-500/10">
-                    <Trash2 size={12} className="mr-1" /> Remove
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReview(r.id, "remove_content")}
+                    disabled={reviewingReport === r.id}
+                    className="text-xs flex-1 border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
+                  >
+                    {reviewingReport === r.id ? (
+                      <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <><Trash2 size={12} className="mr-1" /> Remove</>
+                    )}
                   </Button>
-                  <Button size="sm" onClick={() => onReview(r.id, "suspend")} className="text-xs flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    <Ban size={12} className="mr-1" /> Suspend
+                  <Button
+                    size="sm"
+                    onClick={() => handleReview(r.id, "suspend")}
+                    disabled={reviewingReport === r.id}
+                    className="text-xs flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {reviewingReport === r.id ? (
+                      <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <><Ban size={12} className="mr-1" /> Suspend</>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -1444,71 +1504,6 @@ function SponsorsTab({ contacts, token, onRefresh }: { contacts: any[]; token: s
     </div>
   );
 }
-
-function TipsTab({ tips, onRefresh }: { tips: any[]; onRefresh: () => void }) {
-  const { token } = useAuth();
-  const totalCents = tips.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-  const completedCents = tips.filter((t: any) => t.status === "completed").reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-
-  const markCompleted = async (tipId: number) => {
-    const res = await fetch(`/api/admin/tips/${tipId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ status: "completed" }),
-    });
-    if (res.ok) onRefresh();
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Bebas Neue'" }}>${(totalCents / 100).toFixed(0)}</p>
-          <p className="text-[10px] text-muted-foreground">Total Tips</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-primary" style={{ fontFamily: "'Bebas Neue'" }}>${(completedCents / 100).toFixed(0)}</p>
-          <p className="text-[10px] text-muted-foreground">Completed</p>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        {tips.map((t: any) => (
-          <div key={t.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-              <DollarSign size={16} className="text-amber-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground text-sm">${(t.amount / 100).toFixed(0)}</span>
-                <Badge className={`text-[9px] border-0 ${t.status === "completed" ? "bg-green-500/20 text-green-300" : t.status === "pending" ? "bg-amber-500/20 text-amber-300" : "bg-red-500/20 text-red-300"}`}>
-                  {t.status}
-                </Badge>
-              </div>
-              <p className="text-[11px] text-muted-foreground truncate">{t.name || t.email || "Anonymous"}</p>
-              {t.message && <p className="text-[10px] text-muted-foreground truncate mt-0.5">"{t.message}"</p>}
-            </div>
-            <div className="text-right flex-shrink-0">
-              <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleDateString()}</p>
-              {t.status === "pending" && (
-                <Button size="sm" variant="outline" className="text-[10px] h-6 mt-1" onClick={() => markCompleted(t.id)}>
-                  Mark Done
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      {tips.length === 0 && (
-        <div className="text-center py-12">
-          <DollarSign size={32} className="text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">No tips yet</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 
 // ── Appeals Tab ──────────────────────────────────────────────────────────────
 

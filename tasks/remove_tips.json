@@ -1,0 +1,22 @@
+[
+  {
+    "content": "[tip-1] Remove tips route file and its PayPal checkout endpoint",
+    "id": "tip-1",
+    "status": "completed"
+  },
+  {
+    "content": "[tip-2] Remove SponsorScreen component and navigation references",
+    "id": "tip-2",
+    "status": "completed"
+  },
+  {
+    "content": "[tip-3] Clean up app.py route registration and webhook tip handling",
+    "id": "tip-3",
+    "status": "completed"
+  },
+  {
+    "content": "[tip-4] Build and verify app still works cleanly",
+    "id": "tip-4",
+    "status": "completed"
+  }
+]

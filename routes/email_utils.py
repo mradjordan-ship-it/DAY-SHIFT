@@ -3,10 +3,12 @@ import os
 import logging
 from typing import Optional
 
+from .sanitize import sanitize_email_body
+
 logger = logging.getLogger(__name__)
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL = os.environ.get("MAIL_FROM", "Day Shift <noreply@dayshift.app>")
+FROM_EMAIL = os.environ.get("MAIL_FROM", "Day Shift <contact@dayshiftnow.me>")
 
 # Whether email sending is enabled (graceful degrade if no API key)
 EMAIL_ENABLED = bool(RESEND_API_KEY)
@@ -18,7 +20,7 @@ def _get_base_url() -> str:
     if custom_domain:
         return f"https://{custom_domain}"
     # Fallback: use request origin (set per-request in calling code)
-    return os.environ.get("APP_BASE_URL", "https://dayshift.app")
+    return os.environ.get("APP_BASE_URL", "https://app.dayshiftnow.me")
 
 
 def send_verification_email(email: str, name: str, token: str, base_url: Optional[str] = None) -> bool:
@@ -33,6 +35,7 @@ def send_verification_email(email: str, name: str, token: str, base_url: Optiona
 
     url = base_url or _get_base_url()
     verify_link = f"{url}?screen=verify-email&token={token}"
+    safe_name = sanitize_email_body(name)
 
     try:
         import resend
@@ -42,7 +45,7 @@ def send_verification_email(email: str, name: str, token: str, base_url: Optiona
             "from": FROM_EMAIL,
             "to": [email],
             "subject": "Verify your email — Day Shift",
-            "html": _verification_html(name, verify_link),
+            "html": _verification_html(safe_name, verify_link),
             "text": f"Hey {name},\n\nPlease verify your email for Day Shift by clicking this link:\n\n{verify_link}\n\nThis link expires in 24 hours.\n\nIf you didn't create an account, you can ignore this email.\n\n— The Day Shift Team",
         }
         resend.Emails.send(params)
@@ -90,12 +93,14 @@ def send_strike_email(email: str, name: str, strike_count: int, reason: str) -> 
     try:
         import resend
         resend.api_key = RESEND_API_KEY
+        safe_name = sanitize_email_body(name)
+        safe_reason = sanitize_email_body(reason)
 
         params: resend.Emails.SendParams = {
             "from": FROM_EMAIL,
             "to": [email],
             "subject": f"Strike {strike_count} — Day Shift",
-            "html": _strike_html(name, strike_count, reason),
+            "html": _strike_html(safe_name, strike_count, safe_reason),
         }
         resend.Emails.send(params)
         logger.info(f"[Email] Strike email sent to {email}")
@@ -116,12 +121,14 @@ def send_suspension_email(email: str, name: str, reason: str) -> bool:
     try:
         import resend
         resend.api_key = RESEND_API_KEY
+        safe_name = sanitize_email_body(name)
+        safe_reason = sanitize_email_body(reason)
 
         params: resend.Emails.SendParams = {
             "from": FROM_EMAIL,
             "to": [email],
             "subject": "Account Suspended — Day Shift",
-            "html": _suspension_html(name, reason, url),
+            "html": _suspension_html(safe_name, safe_reason, url),
         }
         resend.Emails.send(params)
         logger.info(f"[Email] Suspension email sent to {email}")

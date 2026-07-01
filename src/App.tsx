@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, useCallback, useRef, Suspense, lazy } from "react";
-import type { User, Screen, Match } from "./types";
+import type { User, Screen, Match, FeedSection } from "./types";
 import { initAnalytics, identifyUser, resetUser, trackEvent } from "./lib/analytics";
 import CookieConsent from "./components/CookieConsent";
 
@@ -66,7 +66,6 @@ const UserProfileScreen = lazy(() => import("./components/UserProfileScreen"));
 const ReviewScreen = lazy(() => import("./components/ReviewScreen"));
 const AdminScreen = lazy(() => import("./components/AdminScreen"));
 const SupportScreen = lazy(() => import("./components/SupportScreen"));
-const SponsorScreen = lazy(() => import("./components/SponsorScreen"));
 const LegalScreen = lazy(() => import("./components/LegalScreen"));
 const OnboardingModal = lazy(() => import("./components/OnboardingModal"));
 const InstallPrompt = lazy(() => import("./components/InstallPrompt"));
@@ -96,8 +95,11 @@ import {
   Shield,
   Heart,
   Bell,
-  HardHat,
-  Building2,
+  ChefHat,
+  Store,
+  CalendarDays,
+  Tag,
+  Handshake,
 } from "lucide-react";
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -280,10 +282,11 @@ export default function App() {
       if (prev) {
         setScreen(prev.screen);
         setParams(prev.params);
+        // Sync browser history — replace so we don't get out of sync on repeated backs
+        window.history.replaceState({ screen: prev.screen, params: prev.params }, "");
       } else {
-        // No history left — go to feed
-        setScreen("feed");
-        setParams({});
+        // No history left — stay put, push state back to prevent browser from going elsewhere
+        window.history.pushState({ screen: screenRef.current, params: paramsRef.current }, "");
       }
       window.scrollTo(0, 0);
     };
@@ -343,7 +346,7 @@ export default function App() {
             </Suspense>
           )}
 
-          {/* PWA install prompt — only for logged-in users */}
+          {/* PWA install prompt — only on internal screens */}
           {user && (
             <Suspense fallback={null}>
               <InstallPrompt />
@@ -379,7 +382,7 @@ export default function App() {
                 )}
                 {!user.is_admin && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    {user.role === "worker" ? <HardHat size={12} /> : <Building2 size={12} />} {user.name.split(" ")[0]}
+                    {user.role === "worker" ? <ChefHat size={12} /> : <Store size={12} />} {user.name.split(" ")[0]}
                   </span>
                 )}
                 {/* Notification bell */}
@@ -415,12 +418,6 @@ export default function App() {
             ) : (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => navigate("sponsor")}
-                  className="flex items-center gap-1 text-xs text-primary/80 font-medium hover:text-primary transition-colors"
-                >
-                  <Heart size={15} /> Support Us
-                </button>
-                <button
                   onClick={() => navigate("login")}
                   className="flex items-center gap-1.5 text-sm text-primary font-medium"
                 >
@@ -436,7 +433,7 @@ export default function App() {
             <Suspense fallback={<ScreenLoader />}>
             {/* Landing page for non-logged-in users */}
             {!user && screen === "feed" && <LandingScreen />}
-            {user && screen === "feed" && <FeedScreen key={user.id} />}
+            {user && screen === "feed" && <FeedScreen key={`${user.id}-${params.section || "feed"}`} section={(params.section as FeedSection) || "feed"} />}
             {screen === "landing" && <LandingScreen />}
             {screen === "post" && <PostScreen key={user?.id} />}
             {screen === "matches" && <MatchesScreen key={user?.id} />}
@@ -457,7 +454,6 @@ export default function App() {
             )}
             {screen === "admin" && <AdminScreen />}
             {screen === "support" && <SupportScreen />}
-            {screen === "sponsor" && <SponsorScreen />}
             {screen === "terms" && <LegalScreen type="terms" />}
             {screen === "privacy" && <LegalScreen type="privacy" />}
             {screen === "onboarding" && <OnboardingScreen />}
@@ -483,25 +479,51 @@ export default function App() {
             )}
             <nav className={`flex-shrink-0 z-50 bg-background/95 backdrop-blur-md border-t border-border transition-transform duration-300 ease-in-out md:translate-y-0 ${navHidden ? "translate-y-full" : "translate-y-0"}`}>
             <div className="flex items-stretch">
+              {/* Feed — always navigates to main feed section */}
               <NavBtn
                 icon={<Play size={20} />}
                 label="Feed"
-                active={screen === "feed"}
-                onClick={() => navigate("feed")}
+                active={screen === "feed" && !(params.section === "events" || params.section === "forsale")}
+                onClick={() => navigate("feed", { section: "feed" as FeedSection })}
               />
+              {/* Events */}
+              <NavBtn
+                icon={<CalendarDays size={20} />}
+                label="Events"
+                active={screen === "feed" && params.section === "events"}
+                onClick={() => navigate("feed", { section: "events" as FeedSection })}
+              />
+              {/* For Sale */}
+              <NavBtn
+                icon={<Tag size={20} />}
+                label="Sale"
+                active={screen === "feed" && params.section === "forsale"}
+                onClick={() => navigate("feed", { section: "forsale" as FeedSection })}
+              />
+              {/* Post FAB — context-aware based on current section */}
               {user && (
                 <NavBtn
                   icon={<Plus size={20} />}
                   label="Post"
                   active={screen === "post"}
                   highlight
-                  onClick={() => navigate("post")}
+                  onClick={() => {
+                    const section = (params.section as FeedSection) || "feed";
+                    if (section === "events") {
+                      navigate("post", { presetCategory: "event", returnSection: section });
+                    } else if (section === "forsale") {
+                      navigate("post", { presetCategory: "sale", returnSection: section });
+                    } else {
+                      navigate("post", { returnSection: section });
+                    }
+                  }}
                 />
               )}
+              {/* Matches — handshake icon matching landing page Instant Matching */}
               <NavBtn
                 icon={
                   <div className="relative">
-                    <MessageCircle size={20} />
+                    <Handshake size={20} />
                     {pendingMatches > 0 && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground rounded-full text-[9px] flex items-center justify-center font-bold">
                         {pendingMatches}
@@ -514,15 +536,6 @@ export default function App() {
                 onClick={() => {
                   if (!user) navigate("login");
                   else navigate("matches");
-                }}
-              />
-              <NavBtn
-                icon={<UserIcon size={20} />}
-                label={user ? "Profile" : "Login"}
-                active={screen === "profile" || screen === "login" || screen === "register"}
-                onClick={() => {
-                  if (!user) navigate("login");
-                  else navigate("profile");
                 }}
               />
             </div>

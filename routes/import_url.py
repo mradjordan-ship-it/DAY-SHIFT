@@ -9,8 +9,10 @@ from urllib.parse import urlparse, urljoin
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+
+from .deps import get_current_user
 
 api = APIRouter()
 
@@ -427,7 +429,7 @@ def _make_image_absolute(image_url: str, base_url: str) -> str:
 
 
 @api.post("/import-url", response_model=ImportURLResponse)
-async def import_url(body: ImportURLRequest):
+async def import_url(body: ImportURLRequest, current_user=Depends(get_current_user)):
     """Fetch a URL and extract job-relevant data from its content."""
     # Validate URL
     parsed = urlparse(body.url)
@@ -436,9 +438,17 @@ async def import_url(body: ImportURLRequest):
 
     source_domain = parsed.hostname or ""
 
-    # Block private/internal IPs to prevent SSRF
-    if source_domain in ("localhost", "127.0.0.1", "0.0.0.0"):
+    # Block private/internal IPs and hostnames to prevent SSRF
+    import ipaddress
+    blocked_hostnames = {"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"}
+    if source_domain.lower() in blocked_hostnames:
         raise HTTPException(400, "Cannot import from local addresses")
+    try:
+        addr = ipaddress.ip_address(source_domain)
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast:
+            raise HTTPException(400, "Cannot import from private network addresses")
+    except ValueError:
+        pass  # not an IP address — proceed
 
     # Check if the URL itself is a direct video file
     video_exts = (".mp4", ".webm", ".mov", ".m4v", ".3gp")
@@ -596,3 +606,200 @@ async def import_url(body: ImportURLRequest):
         result["description"] = result["description"][:2000] + "..."
 
     return ImportURLResponse(**result)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# oEmbed URL Preview — for embedding videos from YouTube, Vimeo, TikTok, etc.
+# ═══════════════════════════════════════════════════════════════════════
+
+# oEmbed endpoint mappings: domain → (oEmbed API URL, embed URL template)
+_OEMBED_ENDPOINTS: dict[str, tuple[str, str]] = {
+    "youtube.com": (
+        "https://www.youtube.com/oembed",
+        "https://www.youtube.com/embed/{id}",
+    ),
+    "youtu.be": (
+        "https://www.youtube.com/oembed",
+        "https://www.youtube.com/embed/{id}",
+    ),
+    "vimeo.com": (
+        "https://vimeo.com/api/oembed.json",
+        "https://player.vimeo.com/video/{id}",
+    ),
+    "tiktok.com": (
+        "https://www.tiktok.com/oembed",
+        "https://www.tiktok.com/embed/v2/{id}",
+    ),
+    "instagram.com": (
+        "https://api.instagram.com/oembed",
+        "https://www.instagram.com/embed/{id}",
+    ),
+    "x.com": (
+        "https://publish.twitter.com/oembed",
+        "https://platform.x.com/embed/Tweet.html?id={id}",
+    ),
+    "twitter.com": (
+        "https://publish.twitter.com/oembed",
+        "https://platform.x.com/embed/Tweet.html?id={id}",
+    ),
+}
+
+
+def _extract_video_id(url: str, domain: str) -> str | None:
+    """Extract a video/post ID from various platform URLs."""
+    parsed = urlparse(url)
+    path = parsed.path.strip("/")
+
+    if domain in ("youtube.com", "youtu.be"):
+        # youtube.com/watch?v=XXXXX or youtu.be/XXXXX
+        if domain == "youtu.be":
+            return path.split("?")[0] or None
+        params = dict(pair.split("=", 1) if "=" in pair else (pair, "") for pair in parsed.query.split("&"))
+        return params.get("v")
+
+    elif domain == "vimeo.com":
+        # vimeo.com/XXXXX or vimeo.com/channels/.../XXXXX
+        parts = path.rsplit("/", 1)
+        return parts[-1] if parts[-1].isdigit() else None
+
+    elif domain == "tiktok.com":
+        # tiktok.com/@user/video/XXXXX
+        parts = path.split("/")
+        for p in reversed(parts):
+            if p.isdigit():
+                return p
+        return None
+
+    elif domain == "instagram.com":
+        # instagram.com/p/XXXXX or instagram.com/reel/XXXXX
+        parts = path.split("/")
+        if len(parts) >= 2 and parts[0] in ("p", "reel", "tv"):
+            return parts[1]
+        return None
+
+    elif domain in ("x.com", "twitter.com"):
+        # x.com/user/status/XXXXX
+        parts = path.split("/")
+        for i, p in enumerate(parts):
+            if p in ("status", "statuses") and i + 1 < len(parts):
+                return parts[i + 1]
+        return None
+
+    return None
+
+
+class PreviewURLRequest(BaseModel):
+    url: str
+
+
+class PreviewURLResponse(BaseModel):
+    title: str = ""
+    description: str = ""
+    thumbnail_url: str = ""
+    embed_url: str = ""
+    embed_html: str = ""
+    provider_name: str = ""  # "YouTube", "Vimeo", etc.
+    source_domain: str = ""
+    original_url: str = ""
+
+
+@api.post("/preview-url", response_model=PreviewURLResponse)
+async def preview_url(body: PreviewURLRequest, current_user=Depends(get_current_user)):
+    """Preview a URL for embedding. Returns oEmbed data + OG fallback."""
+    url = body.url.strip()
+    if not url:
+        raise HTTPException(400, "URL is required")
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(400, "URL must start with http:// or https://")
+
+    domain = parsed.hostname or ""
+    # SSRF protection
+    import ipaddress
+    blocked_hostnames = {"localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"}
+    if domain.lower() in blocked_hostnames:
+        raise HTTPException(400, "Cannot preview local addresses")
+    try:
+        addr = ipaddress.ip_address(domain)
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast:
+            raise HTTPException(400, "Cannot preview private network addresses")
+    except ValueError:
+        pass
+    domain = domain.removeprefix("www.").removeprefix("m.").removeprefix("mobile.")
+
+    result: dict = {
+        "original_url": url,
+        "source_domain": domain,
+    }
+
+    # ── Step 1: Try oEmbed for known platforms ──
+    if domain in _OEMBED_ENDPOINTS:
+        oembed_api, embed_template = _OEMBED_ENDPOINTS[domain]
+        video_id = _extract_video_id(url, domain)
+
+        if video_id:
+            try:
+                async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+                    resp = await client.get(oembed_api, params={"url": url, "format": "json"})
+                    if resp.status_code == 200:
+                        oe = resp.json()
+                        result["title"] = oe.get("title", "")
+                        result["description"] = oe.get("author_name", "") + (" · " + oe.get("author_url", "") if oe.get("author_url") else "")
+                        result["thumbnail_url"] = oe.get("thumbnail_url", "") or oe.get("thumbnail", "")
+                        result["embed_html"] = oe.get("html", "")
+                        result["provider_name"] = oe.get("provider_name", "") or domain.capitalize()
+
+                        # Build clean embed URL from template
+                        result["embed_url"] = embed_template.format(id=video_id)
+
+                        # If no thumbnail from oEmbed, fall back to OG image
+                        if not result["thumbnail_url"]:
+                            og_thumb = await _fetch_og_image(url)
+                            if og_thumb:
+                                result["thumbnail_url"] = og_thumb
+
+                        return PreviewURLResponse(**result)
+            except Exception:
+                pass  # Fall through to OG fallback
+
+    # ── Step 2: OG meta fallback for any URL ──
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; DayShiftBot/1.0; +https://dayshiftnow.me)"
+        }) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                og_data = _extract_from_og(soup)
+                result.setdefault("title", og_data.get("title", ""))
+                result.setdefault("description", og_data.get("description", ""))
+                result.setdefault("thumbnail_url", og_data.get("image_url", ""))
+                result.setdefault("source_domain", domain)
+
+                # For non-oEmbed platforms, set embed_url to the original URL
+                # The frontend will render it as a link card / external link
+                if not result["embed_url"]:
+                    result["embed_url"] = url
+                    result["provider_name"] = domain.capitalize()
+    except Exception:
+        pass
+
+    return PreviewURLResponse(**result)
+
+
+async def _fetch_og_image(url: str) -> str | None:
+    """Quick fetch of just the OG:image from a page."""
+    try:
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; DayShiftBot/1.0)"
+        }) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                og_img = soup.find("meta", property="og:image")
+                if og_img and og_img.get("content"):
+                    return og_img["content"].strip()
+    except Exception:
+        pass
+    return None

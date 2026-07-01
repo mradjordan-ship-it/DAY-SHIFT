@@ -208,6 +208,33 @@ def create_free_promo_boost(video_id: int, current_user=Depends(get_current_user
     )
     redemption = cur.fetchone()
     if not redemption:
+        # Fallback: check for welcome boost (new user signup bonus)
+        cur.execute("SELECT welcome_boost_available FROM users WHERE id = %s", (current_user["id"],))
+        user_row = cur.fetchone()
+        if user_row and user_row["welcome_boost_available"]:
+            tier = "boost"
+            tier_info = TIERS.get(tier, TIERS["boost"])
+            duration = 7  # 1 week welcome boost
+            now = datetime.now(timezone.utc)
+            end = now + timedelta(days=duration)
+            cur.execute(
+                """INSERT INTO post_boosts (video_id, user_id, tier, status, payment_status, admin_approved, start_date, end_date, stripe_session_id)
+                   VALUES (%s, %s, %s, 'active', 'paid', TRUE, %s, %s, %s) RETURNING *""",
+                (video_id, current_user["id"], tier, now, end, "WELCOME"),
+            )
+            boost = dict(cur.fetchone())
+            cur.execute("UPDATE users SET welcome_boost_available = FALSE WHERE id = %s", (current_user["id"],))
+            conn.commit()
+            cur.close()
+            conn.close()
+            for k in ("created_at", "start_date", "end_date"):
+                if boost.get(k):
+                    boost[k] = boost[k].isoformat()
+            return {
+                "ok": True,
+                "message": f"Welcome boost activated! Your post is boosted for {duration} days.",
+                "boost": boost,
+            }
         cur.close()
         conn.close()
         raise HTTPException(400, "No free boost available. Sign up with a promo code to get one!")
@@ -283,43 +310,24 @@ def cancel_boost(boost_id: int, current_user=Depends(get_current_user)):
     return {"ok": True}
 
 
-@api.post("/advertiser/portal")
-def customer_portal(request: Request, current_user=Depends(get_current_user)):
-    """Create a Stripe Customer Portal session for managing payment methods."""
-    if not os.environ.get("STRIPE_SECRET_KEY"):
-        raise HTTPException(500, "Stripe is not configured")
-    import stripe
-    stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
-
-    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
-    origin = f"https://{custom_domain}" if custom_domain else (request.headers.get("origin") or "https://day-shift.workshop.build")
-
-    try:
-        session = stripe.billing_portal.Session.create(
-            customer=None,  # No customer ID stored yet — could be added later
-            return_url=f"{origin}/profile",
-        )
-        return {"url": session.url}
-    except Exception as e:
-        raise HTTPException(500, f"Stripe portal error: {str(e)}")
-
-
 @api.get("/advertiser/analytics")
 def get_analytics(current_user=Depends(get_current_user)):
-    # Gate: only premium/enterprise advertisers get full analytics
+    # Gate: admins always get access; subscribers need premium/enterprise
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(
-        """SELECT tier, status FROM advertiser_subscriptions
-           WHERE user_id = %s AND status = 'active'
-           ORDER BY created_at DESC LIMIT 1""",
-        (current_user["id"],),
-    )
-    sub = cur.fetchone()
-    if not sub or sub["tier"] not in ("premium", "enterprise"):
-        cur.close()
-        conn.close()
-        raise HTTPException(403, "Full analytics requires a Premium or Enterprise advertising subscription")
+    is_admin = current_user.get("is_admin", False)
+    if not is_admin:
+        cur.execute(
+            """SELECT tier, status FROM advertiser_subscriptions
+               WHERE user_id = %s AND status = 'active'
+               ORDER BY created_at DESC LIMIT 1""",
+            (current_user["id"],),
+        )
+        sub = cur.fetchone()
+        if not sub or sub["tier"] not in ("premium", "enterprise"):
+            cur.close()
+            conn.close()
+            raise HTTPException(403, "Full analytics requires a Premium or Enterprise advertising subscription")
     uid = current_user["id"]
     # Overall stats
     cur.execute(
@@ -451,95 +459,4 @@ def get_ad_subscription_status(current_user=Depends(get_current_user)):
         "active": sub.get("tier") in ("business", "premium", "enterprise") and sub.get("status", "active") == "active",
         "tier": sub.get("tier"),
         "boosts_per_month": AD_TIERS.get(sub.get("tier", ""), {}).get("boosts_per_month", 0),
-    }
-
-
-@api.post("/advertiser/subscribe")
-def create_ad_subscription(body: dict, request: Request, current_user=Depends(get_current_user)):
-    """Create a Stripe Checkout session for an advertising subscription."""
-    tier = body.get("tier")
-    if tier not in AD_TIERS:
-        raise HTTPException(400, f"Invalid tier. Choose from: {list(AD_TIERS.keys())}")
-
-    tier_info = AD_TIERS[tier]
-    if not os.environ.get("STRIPE_SECRET_KEY"):
-        raise HTTPException(500, "Stripe is not configured")
-    import stripe
-    stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
-
-    custom_domain = os.environ.get("WORKSHOP_CUSTOM_DOMAIN")
-    origin = f"https://{custom_domain}" if custom_domain else (request.headers.get("origin") or "https://day-shift.workshop.build")
-
-    # Try to find or create a Stripe price for this tier
-    price_lookup = f"dayshift_ad_{tier}"
-    try:
-        prices = stripe.Price.list(lookup_keys=[price_lookup], active=True)
-        if prices.data:
-            price_id = prices.data[0].id
-        else:
-            product = stripe.Product.create(name=f"Day Shift — {tier_info['name']} Advertising")
-            price = stripe.Price.create(
-                product=product.id,
-                unit_amount=tier_info["price"] * 100,
-                currency="usd",
-                recurring={"interval": "month"},
-                lookup_key=price_lookup,
-            )
-            price_id = price.id
-    except Exception:
-        price_id = None
-
-    # Record pending subscription
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        """INSERT INTO advertiser_subscriptions (user_id, tier, status)
-           VALUES (%s, %s, 'pending') RETURNING *""",
-        (current_user["id"], tier),
-    )
-    sub = dict(cur.fetchone())
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    try:
-        session_params = {
-            "mode": "subscription",
-            "line_items": ([{"price": price_id, "quantity": 1}] if price_id else [{
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {"name": f"Day Shift — {tier_info['name']} Advertising"},
-                    "unit_amount": tier_info["price"] * 100,
-                    "recurring": {"interval": "month"},
-                },
-                "quantity": 1,
-            }]),
-            "success_url": f"{origin}/advertise?success=1&session_id={{CHECKOUT_SESSION_ID}}",
-            "cancel_url": f"{origin}/advertise?canceled=1",
-            "client_reference_id": str(sub["id"]),
-            "metadata": {"user_id": str(current_user["id"]), "tier": tier},
-        }
-        checkout_session = stripe.checkout.Session.create(**session_params)
-    except Exception as e:
-        conn = get_conn()
-        cur = conn.cursor()
-        cur.execute("UPDATE advertiser_subscriptions SET status = 'failed' WHERE id = %s", (sub["id"],))
-        conn.commit()
-        cur.close()
-        conn.close()
-        raise HTTPException(500, f"Stripe checkout error: {str(e)}")
-
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE advertiser_subscriptions SET stripe_session_id = %s WHERE id = %s",
-        (checkout_session.id, sub["id"]),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return {
-        "stripe_checkout_url": checkout_session.url,
-        "stripe_session_id": checkout_session.id,
     }

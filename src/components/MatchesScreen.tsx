@@ -3,7 +3,7 @@ import type { Match } from "../types";
 import { useAuth, useNav } from "../App";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, MessageCircle, Star, XCircle, CarFront, HardHat, Building2, Hourglass, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock, MessageCircle, Star, XCircle, CarFront, ChefHat, Store, Hourglass, Sparkles } from "lucide-react";
 
 export default function MatchesScreen() {
   const { user, token } = useAuth();
@@ -129,7 +129,7 @@ export default function MatchesScreen() {
   return (
     <div className="flex flex-col h-[calc(100vh-120px)]">
       <div className="p-4 border-b border-border">
-        <h1 className="text-2xl text-foreground mb-3" style={{ fontFamily: "'Bebas Neue'" }}>
+        <h1 className="text-2xl text-foreground mb-1" style={{ fontFamily: "'Bebas Neue'" }}>
           Your Matches
         </h1>
         <div className="flex gap-1">
@@ -287,9 +287,9 @@ function MatchCard({
           </div>
           <p className="text-muted-foreground text-xs">
             {isWorker ? (
-              <><Building2 size={12} className="inline mr-1" /> Kitchen</>
+              <><Store size={12} className="inline mr-1" /> Kitchen</>
             ) : (
-              <><HardHat size={12} className="inline mr-1" /> Crew</>
+              <><ChefHat size={12} className="inline mr-1" /> Crew</>
             )} · {isInitiator ? "You reached out" : "Reached out to you"}
           </p>
         </div>
@@ -320,6 +320,7 @@ function MatchCard({
         )}
 
         {match.status === "active" && (
+          <>
           <div className="flex w-full gap-2">
             <Button
               size="sm"
@@ -358,6 +359,12 @@ function MatchCard({
               </div>
             )}
           </div>
+          {match.employer_location && isWorker && (
+            <p className="text-[10px] text-muted-foreground/50 mt-1 px-1 text-center">
+              Ride services provided by Uber &amp; Lyft, not Day&nbsp;Shift.
+            </p>
+          )}
+          </>
         )}
 
         {match.status === "pending" && isInitiator && (

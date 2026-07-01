@@ -1,0 +1,22 @@
+[
+  {
+    "content": "[dc-1] Replace test post content (IDs 221-234) with realistic shift posts",
+    "id": "dc-1",
+    "status": "completed"
+  },
+  {
+    "content": "[dc-2] Fix avatar dupe: assign unique Unsplash photo to Catering Kings NYC (id=63)",
+    "id": "dc-2",
+    "status": "completed"
+  },
+  {
+    "content": "[dc-3] Assign unique Unsplash/Pexels post images to users with duplicate images",
+    "id": "dc-3",
+    "status": "completed"
+  },
+  {
+    "content": "[dc-4] Update DB + verify feed looks clean",
+    "id": "dc-4",
+    "status": "completed"
+  }
+]

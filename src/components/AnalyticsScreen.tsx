@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth, useNav } from "../App";
-import { ArrowLeft, Eye, MousePointerClick, Handshake, TrendingUp, Clock, BarChart3, Building2 } from "lucide-react";
+import { ArrowLeft, Eye, MousePointerClick, Handshake, TrendingUp, Clock, BarChart3, Store } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 interface AnalyticsData {
@@ -29,12 +29,19 @@ export default function AnalyticsScreen() {
   const { navigate } = useNav();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
     fetch("/api/advertiser/analytics", { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.ok ? r.json() : null)
+      .then(async (r) => {
+        if (r.ok) return r.json();
+        const body = await r.json().catch(() => ({}));
+        setError(body.detail || `Request failed (${r.status})`);
+        return null;
+      })
       .then(setData)
+      .catch(() => setError("Failed to load analytics. Please try again."))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -147,7 +154,7 @@ export default function AnalyticsScreen() {
                     <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Building2 size={14} className="text-muted-foreground" />
+                      <Store size={14} className="text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -161,6 +168,15 @@ export default function AnalyticsScreen() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <BarChart3 size={32} className="text-amber-400/40 mx-auto mb-2" />
+            <p className="text-amber-400/80 text-sm font-medium mb-1">Analytics Unavailable</p>
+            <p className="text-white/30 text-sm max-w-xs mx-auto">{error}</p>
+            <button onClick={() => navigate("advertise")} className="mt-3 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-xs font-medium">
+              Subscribe to Unlock
+            </button>
           </div>
         ) : (
           <div className="text-center py-8">

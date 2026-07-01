@@ -6,9 +6,9 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DATABASE_URL = os.environ.get("DAYSHI_URL", "")
+DATABASE_URL = os.environ.get("DAYSH1_URL", "")
 if not DATABASE_URL:
-    raise RuntimeError("DAYSHI_URL environment variable not set")
+    raise RuntimeError("DAYSH1_URL environment variable not set")
 
 IMG = {
     "grill": "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=600&h=800&fit=crop",

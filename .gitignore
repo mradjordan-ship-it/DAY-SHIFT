@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .venv/
+.env*
 __pycache__/
 *.pyc
 .DS_Store
@@ -23,3 +24,9 @@ create_lower_third.py
 create_mockup.py
 record_sizzle.py
 take_screenshots.py
+# Android build outputs
+android/app/build/
+android/.gradle/
+android/app/src/main/assets/
+android/capacitor-cordova-android-plugins/
+android/local.properties

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth, useNav } from "../App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, HardHat, Building2 } from "lucide-react";
+import { Check, ChefHat, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CUISINES = [
@@ -127,7 +127,7 @@ export default function OnboardingScreen() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                  <HardHat className="w-6 h-6 text-orange-400" />
+                  <ChefHat className="w-6 h-6 text-orange-400" />
                 </div>
                 <div className="flex-1">
                   <p className="text-foreground font-semibold">I'm a Worker</p>
@@ -152,7 +152,7 @@ export default function OnboardingScreen() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-blue-400" />
+                  <Store className="w-6 h-6 text-blue-400" />
                 </div>
                 <div className="flex-1">
                   <p className="text-foreground font-semibold">I'm a Kitchen</p>
@@ -339,7 +339,8 @@ export default function OnboardingScreen() {
         {step < 2 && (
           <button
             onClick={handleSave}
-            className="w-full text-center text-muted-foreground text-[11px] mt-3 hover:text-foreground transition-colors"
+            disabled={saving}
+            className="w-full text-center text-muted-foreground text-[11px] mt-3 hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Skip for now
           </button>

@@ -1,4 +1,5 @@
 """Video routes for Day Shift Marketplace."""
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from .deps import (
     transcode_video, MAX_VIDEO_BYTES, MAX_IMAGE_BYTES,
 )
 from .external_data import fetch_bls_wages, fetch_rss_news
+from .sanitize import sanitize_text
 
 
 def _extract_media(media_row: dict) -> str:
@@ -236,19 +238,20 @@ def list_videos(
         cur.execute("""
             SELECT v.*, u.name as author_name, u.avatar_url as author_avatar, u.avg_rating as author_rating,
                    u.role as author_role, u.is_admin as author_is_admin, u.is_advertiser as author_is_advertiser,
-                   pb.tier as boost_tier
+                   pb.tier as boost_tier, pb.start_date as boost_start
             FROM post_boosts pb
             JOIN videos v ON pb.video_id = v.id
             JOIN users u ON v.user_id = u.id
             WHERE pb.status = 'active' AND pb.end_date > NOW()
             ORDER BY
               CASE pb.tier WHEN 'premium' THEN 0 WHEN 'spotlight' THEN 1 WHEN 'boost' THEN 2 END,
-              pb.created_at DESC
+              pb.start_date DESC
         """)
         boosted = [dict(r) for r in cur.fetchall()]
         for b in boosted:
             b["liked_by_me"] = b["id"] in liked_ids
             if b.get("created_at"): b["created_at"] = b["created_at"].isoformat()
+            if b.get("boost_start"): b["boost_start"] = b["boost_start"].isoformat()
             if b["type"] == "worker" and (not current_user or (current_user["role"] != "employer" and current_user["id"] != b["user_id"])):
                 b["pay_rate"] = ""
         # Dedupe: remove sponsored and boosted posts from regular videos
@@ -259,11 +262,14 @@ def list_videos(
         for p in videos:
             if p.get("created_at") and not isinstance(p.get("created_at"), str):
                 p["created_at"] = p["created_at"].isoformat()
-        # Tier weight for sorting: boosted posts pinned to top, then regular by created_at
+        # Tier weight for sorting: boosted posts pinned to top, sorted by when boosted (not created)
         tier_weight = {"premium": 3, "spotlight": 2, "boost": 1}
         def sort_key(p):
             tw = tier_weight.get(p.get("boost_tier", ""), 0)
-            return (tw, p.get("created_at") or "")
+            # For boosted posts: sort by boost start_date (when it was actually boosted)
+            # For everything else: sort by creation date
+            sort_date = p.get("boost_start") or p.get("created_at") or ""
+            return (tw, sort_date)
         all_posts = sponsored + boosted + videos
         all_posts.sort(key=sort_key, reverse=True)
         videos = all_posts
@@ -308,6 +314,7 @@ def create_video(
     hours: str = Form(""),
     experience_level: str = Form(""),
     location: str = Form(""),
+    embed_url: str = Form(""),
     current_user=Depends(get_current_user),
 ):
     # Validate: must have at least some content
@@ -320,16 +327,23 @@ def create_video(
     if aspect_ratio not in ("9:16", "1:1", "4:5", "16:9"):
         aspect_ratio = "9:16"
 
-    # Validate pay_rate: must be a positive number if provided
+    # Validate pay_rate: must be a positive number if provided, or text-based
     if pay_rate and pay_rate.strip():
-        try:
-            pay_val = float(pay_rate.replace("$", "").replace(",", "").strip())
-            if pay_val < 0:
-                raise HTTPException(400, "Pay rate cannot be negative")
-        except ValueError:
-            pass  # non-numeric pay_rate is allowed (e.g. "Negotiable")
+        cleaned = pay_rate.replace("$", "").replace(",", "").strip()
+        # Allow common text-based pay descriptions
+        if re.match(r'^[a-zA-Z\s/.\-]+$', cleaned):
+            pass  # "Negotiable", "DOE", "TBD", etc.
+        else:
+            # Strip common suffixes before parsing
+            numeric = re.sub(r'(?i)\s*(/hr|/hour|/day|/shift|hr|per\s*hour)\s*$', '', cleaned).strip()
+            try:
+                pay_val = float(numeric)
+                if pay_val <= 0:
+                    raise HTTPException(400, "Pay rate must be a positive number — zero or negative not allowed")
+            except ValueError:
+                raise HTTPException(400, "Pay rate must be a positive number (e.g. $20/hr) or Negotiable")
 
-    # Validate event_date: cannot be in the past
+    # Validate event_date: must be valid YYYY-MM-DD and not in the past
     if event_date and event_date.strip():
         try:
             from datetime import date as _date
@@ -337,7 +351,7 @@ def create_video(
             if evt < _date.today():
                 raise HTTPException(400, "Event date cannot be in the past")
         except (ValueError, TypeError):
-            pass  # malformed date — let it through, stored as text
+            raise HTTPException(400, "Event date must be a valid date in YYYY-MM-DD format (e.g. 2026-07-15)")
 
     # Validate scheduled_at: cannot be in the past
     if scheduled_at and scheduled_at.strip():
@@ -353,11 +367,17 @@ def create_video(
 
     conn = get_conn()
     cur = conn.cursor()
+
+    # Sanitize user-generated text fields before storage (XSS defense-in-depth)
+    title_safe = sanitize_text(title, max_length=200)
+    description_safe = sanitize_text(description, max_length=2000)
+    location_safe = sanitize_text(location, max_length=200)
+
     try:
         cur.execute(
-            """INSERT INTO videos (user_id, video_url, image_url, type, post_type, category, price, event_date, event_time, scheduled_at, aspect_ratio, title, description, cuisine_type, pay_rate, hours, experience_level, location)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
-            (current_user["id"], video_url or None, image_url or None, type, post_type, category, price, event_date, event_time, scheduled_at or None, aspect_ratio, title or None, description, cuisine_type, pay_rate, hours, experience_level, location),
+            """INSERT INTO videos (user_id, video_url, image_url, type, post_type, category, price, event_date, event_time, scheduled_at, aspect_ratio, title, description, cuisine_type, pay_rate, hours, experience_level, location, embed_url)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+            (current_user["id"], video_url or None, image_url or None, type, post_type, category, price, event_date, event_time, scheduled_at or None, aspect_ratio, title_safe or None, description_safe, cuisine_type, pay_rate, hours, experience_level, location_safe, embed_url or None),
         )
         video = dict(cur.fetchone())
 
@@ -517,10 +537,10 @@ async def update_video(
         
         if title is not None:
             updates.append("title = %s")
-            params.append(title)
+            params.append(sanitize_text(title, max_length=200))
         if description is not None:
             updates.append("description = %s")
-            params.append(description)
+            params.append(sanitize_text(description, max_length=2000))
         if category is not None:
             updates.append("category = %s")
             params.append(category)

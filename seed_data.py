@@ -59,15 +59,15 @@ def seed():
         VALUES (%s,%s,%s,%s,TRUE,TRUE,%s,%s,%s,%s,%s) RETURNING id
     """, (
         "Day Shift Admin",
-        "admin@dayshift.app",
+        "admin@dayshiftnow.me",
         hash_pw("admin123"),
         "admin",
         "Official Day Shift account. Sharing culinary opportunities across the city.",
         "",
         5.0, 150, "New York, NY"
     ))
-    users["admin@dayshift.app"] = cur.fetchone()["id"]
-    print(f"  Admin (id={users['admin@dayshift.app']})")
+    users["admin@dayshiftnow.me"] = cur.fetchone()["id"]
+    print(f"  Admin (id={users['admin@dayshiftnow.me']})")
 
     # Workers
     worker_data = [
@@ -149,7 +149,7 @@ def seed():
     # ═══════════════════════════════════════════════════════════════════════
     print("\nSeeding videos/posts...")
 
-    admin_id = users["admin@dayshift.app"]
+    admin_id = users["admin@dayshiftnow.me"]
     worker_emails = ["marcus@cook.com", "priya@cook.com", "deshawn@cook.com", "sofia@cook.com", "aiden@cook.com", "keisha@cook.com"]
     employer_emails = ["golden@spoon.com", "harlem@eats.com", "sakura@nyc.com", "bake@brooklyn.com", "catering@kings.com"]
 
@@ -477,7 +477,7 @@ def seed():
     like_count = 0
     # Each user likes a random selection of other users' posts
     all_video_ids = list(videos.values())
-    all_user_ids = [users[k] for k in list(users.keys()) if k != "admin@dayshift.app"]
+    all_user_ids = [users[k] for k in list(users.keys()) if k != "admin@dayshiftnow.me"]
 
     for uid in all_user_ids:
         # Like 3-6 random posts (not their own)
@@ -658,7 +658,7 @@ def seed():
     tip_data = [
         (users["marcus@cook.com"], 500, "Sarah M.", "sarah@email.com", "Love the app! Here's a tip to keep it going."),
         (users["priya@cook.com"], 1000, "", "", "Anonymous tip. Great platform."),
-        (users["admin@dayshift.app"], 2000, "Big Restaurant Corp", "contact@bigcorp.com", "Here's $20 to support culinary workers finding opportunities."),
+        (users["admin@dayshiftnow.me"], 2000, "Big Restaurant Corp", "contact@bigcorp.com", "Here's $20 to support culinary workers finding opportunities."),
     ]
 
     for uid, amount, name, email, msg in tip_data:
@@ -726,7 +726,7 @@ def seed():
     print("ACCOUNTS FOR TESTING:")
     print()
     print("  ADMIN:")
-    print("    Email:    admin@dayshift.app")
+    print("    Email:    admin@dayshiftnow.me")
     print("    Password: admin123")
     print()
     print("  WORKERS:")

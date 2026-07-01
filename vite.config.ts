@@ -18,6 +18,8 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: true,
     proxy: {
+      "/terms": `http://localhost:${process.env.VITE_BACKEND_PORT || 3101}`,
+      "/privacy": `http://localhost:${process.env.VITE_BACKEND_PORT || 3101}`,
       "/api": `http://localhost:${process.env.VITE_BACKEND_PORT || 3101}`,
     },
     headers: {

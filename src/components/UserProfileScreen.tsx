@@ -20,6 +20,9 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
   const [reportSent, setReportSent] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [expandedPost, setExpandedPost] = useState<number | null>(null);
+  const [blockLoading, setBlockLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   useEffect(() => {
     if (!userId) return;
@@ -72,18 +75,44 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
   const isOwnProfile = currentUser?.id === userId;
 
   const handleToggleBlock = async () => {
+    if (blockLoading) return;
     if (!token) return;
+    setBlockLoading(true);
     try {
       const res = await fetch("/api/blocks", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setBlocked(data.blocked);
-      }
-    } catch {}
+      if (!res.ok) throw new Error("Failed to update block");
+      const data = await res.json();
+      setBlocked(data.blocked);
+    } catch (err: unknown) {
+      setReportError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setBlockLoading(false);
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (reportLoading) return;
+    setReportLoading(true);
+    setReportError("");
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ target_type: "user", target_id: userId, reason: reportReason, comment: reportComment || null }),
+      });
+      if (!res.ok) throw new Error("Failed to submit report");
+      setReportSent(true);
+      trackEvent("user_reported", { user_id: userId, reason: reportReason });
+      setTimeout(() => { setShowReport(false); setReportSent(false); setReportComment(""); }, 1500);
+    } catch (err: unknown) {
+      setReportError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   return (
@@ -161,10 +190,15 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
           </Button>
           <Button
             onClick={handleToggleBlock}
+            disabled={blockLoading}
             variant={blocked ? "default" : "outline"}
             className={`flex-none ${blocked ? "bg-destructive text-destructive-foreground" : "border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive"}`}
           >
-            <Ban size={16} />
+            {blockLoading ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Ban size={16} />
+            )}
           </Button>
           <Button
             onClick={() => setShowReport(true)}
@@ -224,25 +258,19 @@ export default function UserProfileScreen({ userId }: { userId: number }) {
                 <div className="flex gap-2">
                   <button onClick={() => setShowReport(false)} className="flex-1 px-4 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground">Cancel</button>
                   <button
-                    onClick={async () => {
-                      try {
-                        const res = await fetch("/api/reports", {
-                          method: "POST",
-                          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                          body: JSON.stringify({ target_type: "user", target_id: userId, reason: reportReason, comment: reportComment || null }),
-                        });
-                        if (res.ok) {
-                          setReportSent(true);
-                          trackEvent("user_reported", { user_id: userId, reason: reportReason });
-                          setTimeout(() => { setShowReport(false); setReportSent(false); setReportComment(""); }, 1500);
-                        }
-                      } catch {}
-                    }}
-                    className="flex-1 px-4 py-2 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground"
+                    onClick={handleSubmitReport}
+                    disabled={reportLoading}
+                    className="flex-1 px-4 py-2 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
+                    {reportLoading ? (
+                      <div className="w-3 h-3 border-2 border-destructive-foreground border-t-transparent rounded-full animate-spin" />
+                    ) : null}
                     Submit Report
                   </button>
                 </div>
+                {reportError && (
+                  <p className="text-destructive text-xs text-center">{reportError}</p>
+                )}
               </>
             )}
           </div>

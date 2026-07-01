@@ -47,6 +47,8 @@ export default function SupportScreen() {
   const [newMessage, setNewMessage] = useState("");
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [replyError, setReplyError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,43 +79,47 @@ export default function SupportScreen() {
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || sending) return;
     setSending(true);
+    setSendError("");
     try {
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ subject: newSubject, message: newMessage }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setActiveThread(data.thread_id);
-        setNewSubject("");
-        setNewMessage("");
-        await fetchThreads();
-        await openThread(data.thread_id);
-        setView("chat");
-      }
+      if (!res.ok) throw new Error("Failed to send message");
+      const data = await res.json();
+      setActiveThread(data.thread_id);
+      setNewSubject("");
+      setNewMessage("");
+      await fetchThreads();
+      await openThread(data.thread_id);
+      setView("chat");
+    } catch {
+      setSendError("Failed to send message. Please try again.");
     } finally {
       setSending(false);
     }
   };
 
   const handleReply = async () => {
-    if (!replyText.trim() || !activeThread) return;
+    if (!replyText.trim() || !activeThread || sending) return;
     setSending(true);
+    setReplyError("");
     try {
       const res = await fetch(`/api/support/${activeThread}/reply`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ message: replyText }),
       });
-      if (res.ok) {
-        const msg = await res.json();
-        setMessages((prev) => [...prev, msg]);
-        setReplyText("");
-        await fetchThreads();
-      }
+      if (!res.ok) throw new Error("Failed to send reply");
+      const msg = await res.json();
+      setMessages((prev) => [...prev, msg]);
+      setReplyText("");
+      await fetchThreads();
+    } catch {
+      setReplyError("Failed to send reply. Please try again.");
     } finally {
       setSending(false);
     }
@@ -262,6 +268,9 @@ export default function SupportScreen() {
                 </span>
               )}
             </Button>
+            {sendError && (
+              <p className="text-destructive text-xs text-center">{sendError}</p>
+            )}
           </div>
         )}
 
@@ -342,9 +351,16 @@ export default function SupportScreen() {
                   size="icon"
                   className="bg-primary text-primary-foreground flex-shrink-0"
                 >
-                  <Send size={16} />
+                  {sending ? (
+                    <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
                 </Button>
               </div>
+              {replyError && (
+                <p className="text-destructive text-xs mt-1.5">{replyError}</p>
+              )}
             </div>
           </div>
         )}
@@ -359,15 +375,27 @@ function GuestSupportForm() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/support/guest", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, message }),
-    });
-    if (res.ok) setSent(true);
+    if (submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/support/guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, message }),
+      });
+      if (!res.ok) throw new Error("Failed to send message");
+      setSent(true);
+    } catch {
+      setError("Failed to send message. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (sent) {
@@ -406,7 +434,19 @@ function GuestSupportForm() {
             <Label className="text-xs">Message</Label>
             <Textarea value={message} onChange={(e) => setMessage(e.target.value)} required rows={4} className="bg-secondary border-border resize-none" />
           </div>
-          <Button type="submit" className="w-full h-11 bg-primary text-primary-foreground font-semibold">Send Message</Button>
+          <Button type="submit" disabled={submitting} className="w-full h-11 bg-primary text-primary-foreground font-semibold">
+            {submitting ? (
+              <span className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                Sending…
+              </span>
+            ) : (
+              "Send Message"
+            )}
+          </Button>
+          {error && (
+            <p className="text-destructive text-xs text-center">{error}</p>
+          )}
         </form>
       </div>
     </div>

@@ -1,0 +1,27 @@
+[
+  {
+    "content": "[audit-test] Run edge-case tests on all 3 AI endpoints: shifts/parse, matches/rank, ai/improve-post",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[hardening-retry] Add retry + rate-limit handling to improve-post endpoint",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[hardening-client] Standardize genai.Client creation between ai.py and matches.py",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[hardening-validation] Harden post-LLM validation on shifts/parse and matches/rank — standardize retry error types and logging",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "[test-final] Re-run all AI tests after fixes to confirm structure is correct",
+    "id": "5",
+    "status": "completed"
+  }
+]

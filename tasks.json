@@ -1,42 +1,27 @@
 [
   {
-    "content": "Add strikes + appeals tables and suspension_expires_at column via migration",
+    "content": "[dead-1] Identify which DB connector is actually used (DAYSH1 vs DBAFF8BCDC)",
     "id": "1",
     "status": "completed"
   },
   {
-    "content": "Update reports.py to issue strikes instead of auto-suspend, with tier thresholds",
+    "content": "[dead-2] Remove Stripe dead code from advertiser.py, webhooks.py, deps.py",
     "id": "2",
     "status": "completed"
   },
   {
-    "content": "Add appeal endpoints (create, admin review) and unsuspend on approval",
+    "content": "[dead-3] Fix DAYSHI_URL typo in seed_demo.py, remove stripe Python dep",
     "id": "3",
     "status": "completed"
   },
   {
-    "content": "Add auto-expiring suspension check in deps.py login/session guard",
+    "content": "[dead-4] Check for other unused imports, dead routes, orphan functions",
     "id": "4",
     "status": "completed"
   },
   {
-    "content": "Send suspension/strike emails via Resend",
+    "content": "[dead-5] Build & verify nothing broke",
     "id": "5",
-    "status": "completed"
-  },
-  {
-    "content": "Add text content scanning (titles, bios, descriptions) with keyword filter",
-    "id": "6",
-    "status": "completed"
-  },
-  {
-    "content": "Update AdminScreen with strikes view and appeals review",
-    "id": "7",
-    "status": "completed"
-  },
-  {
-    "content": "Update AuthScreen to show appeal option for suspended users",
-    "id": "8",
     "status": "completed"
   }
 ]

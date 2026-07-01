@@ -1,14 +1,69 @@
 """Sponsor / donor / supporter contact routes for Day Shift Marketplace."""
+import os
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 
 from .deps import get_conn, require_admin
+from .sanitize import sanitize_email_body
+
+logger = logging.getLogger(__name__)
+
+# Contact email & phone for Day Shift
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "contact@dayshiftnow.me")
+CONTACT_PHONE = os.environ.get("CONTACT_PHONE", "")
 
 api = APIRouter()
 
 
+def _send_contact_email(name: str, email: str, phone: str, message: str):
+    """Send a real email to Day Shift when someone uses the contact form."""
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        logger.info("[Contact] No RESEND_API_KEY — skipping email notification")
+        return
+
+    try:
+        import resend
+        resend.api_key = api_key
+
+        safe_name = sanitize_email_body(name)
+        safe_email = sanitize_email_body(email)
+        safe_phone = sanitize_email_body(phone)
+        safe_message = sanitize_email_body(message)
+
+        resend.Emails.send({
+            "from": f"Day Shift <{CONTACT_EMAIL}>",
+            "to": [CONTACT_EMAIL],
+            "reply_to": email,
+            "subject": f"New Contact Message from {safe_name}",
+            "html": f"""
+                <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:auto;padding:20px;">
+                    <h2 style="color:#f97316;">📬 New Contact Message</h2>
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tr><td style="padding:8px 0;color:#71717a;font-weight:600;">Name:</td><td>{safe_name}</td></tr>
+                        <tr><td style="padding:8px 0;color:#71717a;font-weight:600;">Email:</td><td><a href="mailto:{safe_email}">{safe_email}</a></td></tr>
+                        <tr><td style="padding:8px 0;color:#71717a;font-weight:600;">Phone:</td><td><a href="tel:{safe_phone}">{safe_phone}</a></td></tr>
+                    </table>
+                    <div style="background:#18181b;border-radius:12px;padding:16px;margin-top:16px;">
+                        <p style="margin:0;color:#fafafa;white-space:pre-wrap;">{safe_message}</p>
+                    </div>
+                    <p style="margin-top:16px;color:#52525b;font-size:12px;">Sent from Day Shift app</p>
+                </div>
+            """,
+            "text": f"New Contact Message from {name}\n\nEmail: {email}\nPhone: {phone}\n\nMessage:\n{message}\n\n— Day Shift App",
+        })
+        logger.info(f"[Contact] Email sent to {CONTACT_EMAIL} from {name}")
+    except Exception as e:
+        logger.error(f"[Contact] Failed to send email: {e}")
+        # Don't fail the request — DB save already succeeded
+
+
 @api.post("/contact/sponsor")
 def sponsor_contact(body: dict):
-    """Public endpoint — no auth required. For sponsors, donors, supporters."""
+    """Public endpoint — no auth required. For sponsors, donors, supporters.
+
+    Saves to DB AND sends a real email to Day Shift.
+    """
     name = body.get("name", "").strip()
     email = body.get("email", "").strip()
     phone = body.get("phone", "").strip()
@@ -32,6 +87,9 @@ def sponsor_contact(body: dict):
     finally:
         cur.close()
         conn.close()
+
+    # Send real email notification
+    _send_contact_email(name, email, phone, message)
 
     if row.get("created_at"):
         row["created_at"] = row["created_at"].isoformat()

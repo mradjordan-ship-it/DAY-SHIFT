@@ -1,0 +1,32 @@
+[
+  {
+    "content": "[feed] Fix handleMatch, handleDelete, handleReport, handleBookmark in FeedScreen — add loading/disabling",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[profile] Fix handleDeleteVideo, handleResendVerification, handleReviewSubmit in ProfileScreen",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[chat-user-review] Fix report, block, review, message submit in ChatScreen, SupportScreen, UserProfileScreen",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[boost-pay-admin] Fix BoostScreen, SponsorScreen, AdminScreen, AdvertiseScreen async actions",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "[onboard] Fix OnboardingScreen skip button to match save button's loading discipline",
+    "id": "5",
+    "status": "completed"
+  },
+  {
+    "content": "[build-test] Build + test all fixes",
+    "id": "6",
+    "status": "completed"
+  }
+]

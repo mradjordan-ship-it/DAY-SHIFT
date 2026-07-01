@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useAuth, useNav } from "../App";
+import type { FeedSection } from "../types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle, Upload, X, Image as ImageIcon, VideoIcon, Tag, Calendar, Sparkles, Lightbulb, Clock, Star, HardHat, Building2, Link, Loader2, Camera } from "lucide-react";
+import { CheckCircle, Upload, X, Image as ImageIcon, VideoIcon, Tag, Calendar, Lightbulb, Clock, Star, ChefHat, Store, Link, Loader2, Camera, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LiveRecorder from "./LiveRecorder";
 
@@ -49,8 +51,8 @@ export default function PostScreen() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Default category based on role: crew → "crew", employer → "sale", admin → "general"
-  const defaultCategory = isAdmin ? "Admin" : postType === "worker" ? "crew" : "sale";
+  // Default category based on role: worker → "crew", employer → "kitchen", admin → "Admin"
+  const defaultCategory = isAdmin ? "Admin" : postType === "worker" ? "crew" : "kitchen";
 
   const [form, setForm] = useState({
     title: "",
@@ -73,6 +75,14 @@ export default function PostScreen() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   const [importSuccess, setImportSuccess] = useState(false);
+
+  // Embed preview state (for video URLs — YouTube, Vimeo, TikTok, etc.)
+  const [embedPreview, setEmbedPreview] = useState<{
+    title: string;
+    thumbnail_url: string;
+    embed_url: string;
+    provider_name: string;
+  } | null>(null);
 
   if (!user) {
     return (
@@ -157,6 +167,33 @@ export default function PostScreen() {
     setImportError("");
     setImportSuccess(false);
     try {
+      // First, check if this is an embeddable video URL (YouTube, Vimeo, TikTok, etc.)
+      const previewRes = await fetch("/api/preview-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: importUrl.trim() }),
+      });
+      if (previewRes.ok) {
+        const preview = await previewRes.json();
+        // If we got embed data with a real embed_url (not just the original URL as fallback)
+        if (preview.embed_url && preview.embed_url !== importUrl.trim() && preview.provider_name) {
+          setEmbedPreview({
+            title: preview.title || "",
+            thumbnail_url: preview.thumbnail_url || "",
+            embed_url: preview.embed_url,
+            provider_name: preview.provider_name || "",
+          });
+          // Pre-fill title from the video
+          if (preview.title && !form.title) set("title", preview.title);
+          if (preview.description && !form.description) set("description", preview.description);
+          setImportSuccess(true);
+          setImportUrl("");
+          setTimeout(() => setImportSuccess(false), 3000);
+          return; // Stop here — this is an embedded video post
+        }
+      }
+
+      // Fall back to the full OG import for non-video URLs
       const res = await fetch("/api/import-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -216,6 +253,22 @@ export default function PostScreen() {
     if (sharedTitle) setForm((f) => ({ ...f, title: sharedTitle }));
     if (sharedDesc && sharedDesc !== sharedUrl) setForm((f) => ({ ...f, description: sharedDesc }));
   }, [navParams.shared_url, navParams.title, navParams.description]);
+
+  // Section-based category pre-selection from nav params
+  const presetCategory = (navParams.presetCategory as string) || null;
+  const returnSection = (navParams.returnSection as FeedSection) || "feed";
+  const isCategoryLocked = !!presetCategory;
+
+  // Apply preset category on mount
+  useEffect(() => {
+    if (presetCategory && ["event", "sale", "crew"].includes(presetCategory)) {
+      setForm((f) => ({ ...f, category: presetCategory }));
+      // Also switch postType for crew
+      if (presetCategory === "crew") {
+        setPostType("worker");
+      }
+    }
+  }, [presetCategory]);
 
   // Admin upload handlers
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,15 +391,25 @@ export default function PostScreen() {
     // Client-side validation
     if (form.pay_rate) {
       const cleaned = form.pay_rate.replace("$", "").replace(",", "").trim();
-      const parsed = parseFloat(cleaned);
-      if (!isNaN(parsed) && parsed < 0) {
-        setFormError("Pay rate cannot be negative");
-        return;
+      // Allow pure text (Negotiable, TBD, DOE, etc.)
+      if (!/^[a-zA-Z\s/.\-]+$/.test(cleaned)) {
+        const numeric = cleaned.replace(/\s*(\/hr|\/hour|\/day|\/shift|hr|per\s*hour)\s*$/i, '');
+        const parsed = parseFloat(numeric);
+        if (!isNaN(parsed)) {
+          if (parsed <= 0) {
+            setFormError("Pay rate must be a positive number — zero or negative not allowed");
+            return;
+          }
+        }
       }
     }
     if (form.event_date) {
       try {
         const d = new Date(form.event_date + "T00:00:00");
+        if (isNaN(d.getTime())) {
+          setFormError("Event date must be a valid date in YYYY-MM-DD format (e.g. 2026-07-15)");
+          return;
+        }
         const today = new Date(); today.setHours(0, 0, 0, 0);
         if (d < today) {
           setFormError("Event date cannot be in the past");
@@ -361,7 +424,7 @@ export default function PostScreen() {
       const videoUrl = uploadedVideoUrlAdmin || uploadedVideoUrl || "";
 
       fd.append("type", postType);
-      fd.append("post_type", videoUrl ? "video" : uploadedImageUrl ? "image" : "text");
+      fd.append("post_type", videoUrl ? "video" : (embedPreview ? "embed" : uploadedImageUrl ? "image" : "text"));
       fd.append("category", form.category);
       fd.append("price", form.price);
       fd.append("event_date", form.event_date);
@@ -372,6 +435,9 @@ export default function PostScreen() {
       fd.append("description", form.description);
       fd.append("video_url", videoUrl);
       fd.append("image_url", uploadedImageUrl || "");
+      if (embedPreview) {
+        fd.append("embed_url", embedPreview.embed_url);
+      }
 
       // Extra metadata fields (all users can add these)
       if (!isAdmin) {
@@ -397,7 +463,7 @@ export default function PostScreen() {
         }
       } else {
         const errorData = await res.json().catch(() => ({}));
-        alert(errorData.detail || "Failed to post. Please try again.");
+        setFormError(errorData.detail || "Failed to post. Please try again.");
       }
     } finally {
       setSubmitting(false);
@@ -428,7 +494,9 @@ export default function PostScreen() {
             <div className="flex items-baseline justify-between">
               <div>
                 <h2 className="text-2xl text-foreground" style={{ fontFamily: "'Bebas Neue'" }}>
-                  Create a Post
+                  {isCategoryLocked
+                    ? (form.category === "event" ? "Post an Event" : form.category === "sale" ? "Post For Sale" : "Create a Post")
+                    : "Create a Post"}
                 </h2>
                 <p className="text-muted-foreground text-[11px]">
                   <span className="text-amber-500 font-semibold"><Lightbulb size={11} className="inline mr-0.5" />Add media for 3x more matches — or just post text!</span>
@@ -464,6 +532,38 @@ export default function PostScreen() {
               {importSuccess && <p className="text-[11px] text-green-500">Fields pre-filled — review and add media before posting</p>}
             </div>
 
+            {/* Embed preview card — shows when a video URL is detected */}
+            {embedPreview && (
+              <div className="relative rounded-xl overflow-hidden border border-primary/30 bg-black">
+                {embedPreview.thumbnail_url ? (
+                  <img src={embedPreview.thumbnail_url} alt="" className="w-full h-44 object-cover" />
+                ) : (
+                  <div className="w-full h-44 bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center">
+                    <Play size={40} className="text-white/40" />
+                  </div>
+                )}
+                {/* Play overlay icon */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                    <Play size={24} className="text-white ml-1" fill="white" />
+                  </div>
+                </div>
+                {/* Provider badge + title */}
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">{embedPreview.provider_name}</p>
+                  <p className="text-white text-sm font-semibold line-clamp-1 leading-tight">{embedPreview.title || "Embedded Video"}</p>
+                </div>
+                {/* Remove button */}
+                <button
+                  type="button"
+                  onClick={() => setEmbedPreview(null)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             {/* Media Uploads + Layout */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -481,122 +581,112 @@ export default function PostScreen() {
                   <span className="text-[9px] text-muted-foreground ml-1">Wide</span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
-                  <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", imagePreview ? "border-border bg-black" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
-                    <div className="w-full flex items-center justify-center overflow-hidden" style={imagePreview ? { aspectRatio: aspectRatio === "9:16" ? "9/16" : aspectRatio === "4:5" ? "4/5" : aspectRatio === "1:1" ? "1/1" : "16/9" } : { height: '7rem' }}>
-                      {imagePreview ? (
-                        <div className="relative w-full h-full">
-                          <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                          {!imageUploading && <button onClick={resetImage} className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full text-white hover:bg-black/70 transition-colors"><X size={16} /></button>}
-                        </div>
-                      ) : (
-                        <button onClick={() => imageInputRef.current?.click()} disabled={imageUploading} className="w-full h-28 flex flex-col items-center justify-center">
-                          {imageUploading ? <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <><ImageIcon className="w-6 h-6 text-muted-foreground mb-1" /><span className="text-xs font-medium text-muted-foreground">📷 Image</span></>}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {imageError && <p className="text-xs text-destructive mt-1">{imageError}</p>}
-                  {imageUploading && (
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="flex-1 bg-secondary rounded-full h-1.5 overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all duration-200" style={{ width: `${imageProgress}%` }} />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">{imageProgress}%</span>
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/webm" onChange={handleVideoSelectAdmin} className="hidden" />
-                  <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", videoPreviewAdmin ? "border-border bg-black" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
-                    <div className="w-full flex items-center justify-center overflow-hidden" style={videoPreviewAdmin ? { aspectRatio: aspectRatio === "9:16" ? "9/16" : aspectRatio === "4:5" ? "4/5" : aspectRatio === "1:1" ? "1/1" : "16/9" } : { height: '7rem' }}>
-                      {videoPreviewAdmin ? (
-                        <div className="relative w-full h-full">
-                          <video src={videoPreviewAdmin} controls className="w-full h-full object-cover" />
-                          {!videoUploading && <button onClick={resetVideo} className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full text-white hover:bg-black/70 transition-colors"><X size={16} /></button>}
-                        </div>
-                      ) : (
-                        <button onClick={() => videoInputRef.current?.click()} disabled={videoUploading} className="w-full h-28 flex flex-col items-center justify-center">
-                          {videoUploading ? <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <><VideoIcon className="w-6 h-6 text-muted-foreground mb-1" /><span className="text-xs font-medium text-muted-foreground">🎬 Video (max 60s)</span></>}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {videoError && <p className="text-xs text-destructive mt-1">{videoError}</p>}
-                  {videoUploading && (
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="flex-1 bg-secondary rounded-full h-1.5 overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all duration-200" style={{ width: `${videoProgress}%` }} />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">{videoProgress}%</span>
+              {/* Unified Media Box */}
+              <div className="space-y-1">
+                <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
+                <input ref={videoInputRef} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={handleVideoSelectAdmin} className="hidden" />
+                
+                <div className={cn(
+                  "w-full rounded-xl overflow-hidden border transition-all duration-300", 
+                  (imagePreview || videoPreviewAdmin || recordedUrl || showRecorder) ? "border-border bg-black" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/20 bg-secondary/10"
+                )}>
+                  
+                  {/* Empty State - Selection Grid */}
+                  {!(imagePreview || videoPreviewAdmin || recordedUrl || showRecorder) && (
+                    <div className="w-full grid grid-cols-3 divide-x divide-border" style={{ height: '7rem' }}>
+                      <button type="button" onClick={() => imageInputRef.current?.click()} disabled={submitting} className="flex flex-col items-center justify-center hover:bg-secondary/50 transition-colors">
+                        <ImageIcon className="w-6 h-6 text-muted-foreground mb-1" />
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Image</span>
+                      </button>
+                      
+                      <button type="button" onClick={() => videoInputRef.current?.click()} disabled={submitting || videoUploading} className="flex flex-col items-center justify-center hover:bg-secondary/50 transition-colors">
+                        {videoUploading ? (
+                          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <VideoIcon className="w-6 h-6 text-muted-foreground mb-1" />
+                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Video</span>
+                          </>
+                        )}
+                      </button>
+                      
+                      <button type="button" onClick={() => setShowRecorder(true)} disabled={submitting} className="flex flex-col items-center justify-center hover:bg-secondary/50 transition-colors">
+                        <Camera className="w-6 h-6 text-muted-foreground mb-1" />
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Camera</span>
+                      </button>
                     </div>
                   )}
-                </div>
-                {/* Camera record button */}
-                <div className="space-y-1">
-                  <div className={cn("w-full rounded-xl overflow-hidden border transition-all duration-300", showRecorder ? "border-primary bg-primary/10" : "border-2 border-dashed border-border hover:border-primary/50 hover:bg-secondary/50 bg-secondary/20")}>
-                    <button
-                      onClick={() => setShowRecorder(!showRecorder)}
-                      disabled={submitting}
-                      className="w-full h-28 flex flex-col items-center justify-center"
-                    >
-                      {recordedUrl ? (
-                        <>
-                          <CheckCircle className="w-6 h-6 text-green-500 mb-1" />
-                          <span className="text-xs font-medium text-green-500">✓ Recorded</span>
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="w-6 h-6 text-muted-foreground mb-1" />
-                          <span className="text-xs font-medium text-muted-foreground">🎥 Camera</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Inline Camera Recorder */}
-            {showRecorder && (
-              <div className="space-y-2 rounded-xl border border-border bg-secondary/30 p-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    <Camera size={10} /> Record Video
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-muted-foreground"
-                    onClick={() => setShowRecorder(false)}
-                  >
-                    <X size={14} /> Close
-                  </Button>
-                </div>
-                {submitting ? (
-                  <div className="flex flex-col items-center justify-center py-8 gap-3">
-                    <div className="w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all duration-200"
-                        style={{ width: `${videoProgress}%` }}
-                      />
+                  {/* Active Previews */}
+                  {(imagePreview || videoPreviewAdmin || recordedUrl) && !showRecorder && (
+                    <div className="w-full flex items-center justify-center overflow-hidden" style={{ aspectRatio: aspectRatio === "9:16" ? "9/16" : aspectRatio === "4:5" ? "4/5" : aspectRatio === "1:1" ? "1/1" : "16/9" }}>
+                      
+                      {imagePreview && (
+                        <div className="relative w-full h-full group">
+                          <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => { setImagePreview(null); setImageFile(null); if (imageInputRef.current) imageInputRef.current.value = ""; }}
+                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                          ><X size={16} /></button>
+                        </div>
+                      )}
+
+                      {videoPreviewAdmin && (
+                        <div className="relative w-full h-full group">
+                          <video src={videoPreviewAdmin} className="w-full h-full object-cover" controls playsInline />
+                          <button
+                            type="button"
+                            onClick={() => { setVideoPreview(null); setVideoFile(null); if (videoInputRef.current) videoInputRef.current.value = ""; }}
+                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white hover:bg-black/80 z-10 transition-colors"
+                          ><X size={16} /></button>
+                        </div>
+                      )}
+
+                      {recordedUrl && (
+                        <div className="relative w-full h-full group">
+                          <video src={recordedUrl} className="w-full h-full object-cover" controls playsInline />
+                          <div className="absolute top-2 right-2 flex gap-2 z-10">
+                             <button
+                              type="button"
+                              onClick={() => { setRecordedUrl(null); setRecordedFile(null); setShowRecorder(true); }}
+                              className="w-8 h-8 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                            ><Camera size={14} /></button>
+                            <button
+                              type="button"
+                              onClick={() => { setRecordedUrl(null); setRecordedFile(null); }}
+                              className="w-8 h-8 rounded-full bg-red-500/80 backdrop-blur flex items-center justify-center text-white hover:bg-red-500 transition-colors"
+                            ><X size={16} /></button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-muted-foreground text-sm">Uploading… {videoProgress}%</p>
+                  )}
+                  
+                  {/* Camera Active State gets handled below this block, but we hide the empty state when it's active */}
+                </div>
+                
+                {/* Status displays for video/image upload */}
+                {imageError && <p className="text-xs text-destructive mt-1">{imageError}</p>}
+                {imageUploading && (
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="flex-1 bg-secondary rounded-full h-1.5 overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all duration-200" style={{ width: `${imageProgress}%` }} />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{imageProgress}%</span>
                   </div>
-                ) : (
-                  <LiveRecorder
-                    onRecorded={(blob, url) => {
-                      handleRecorded(blob, url);
-                      setShowRecorder(false);
-                    }}
-                    onCancel={() => setShowRecorder(false)}
-                  />
+                )}
+                {videoError && <p className="text-xs text-destructive mt-1">{videoError}</p>}
+                {videoUploading && (
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="flex-1 bg-secondary rounded-full h-1.5 overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all duration-200" style={{ width: `${videoProgress}%` }} />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{videoProgress}%</span>
+                  </div>
                 )}
               </div>
-            )}
+            </div>
 
             {/* Recorded video preview */}
             {recordedUrl && !showRecorder && (
@@ -638,13 +728,22 @@ export default function PostScreen() {
                     placeholder="Type any category..."
                     className="bg-secondary border-border h-8 text-sm"
                   />
+                ) : isCategoryLocked ? (
+                  /* Locked category — show as read-only badge */
+                  <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 h-8 flex items-center text-xs font-semibold text-primary">
+                    {form.category === "event" && <><Calendar size={12} className="inline mr-1" /> Event</>}
+                    {form.category === "sale" && <><Tag size={12} className="inline mr-1" /> For Sale</>}
+                    {form.category === "crew" && <><ChefHat size={12} className="inline mr-1" /> Crew</>}
+                    {form.category === "kitchen" && <><Store size={12} className="inline mr-1" /> Kitchen</>}
+                  </div>
                 ) : (
                 <Select onValueChange={(v) => set("category", v)} value={form.category}>
                   <SelectTrigger className="bg-secondary border-border h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(postType === "worker" || isAdmin) && <SelectItem value="crew"><HardHat size={12} className="inline mr-1" /> Crew</SelectItem>}
+                    {(postType === "worker" || isAdmin) && <SelectItem value="crew"><ChefHat size={12} className="inline mr-1" /> Crew</SelectItem>}
+                    {(postType === "employer" || isAdmin) && <SelectItem value="kitchen"><Store size={12} className="inline mr-1" /> Kitchen</SelectItem>}
                     <SelectItem value="sale"><Tag size={12} className="inline mr-1" /> For Sale</SelectItem>
                     <SelectItem value="event"><Calendar size={12} className="inline mr-1" /> Event</SelectItem>
                   </SelectContent>
@@ -743,7 +842,13 @@ export default function PostScreen() {
             <div className="flex gap-2 pt-1">
               <Button
                 variant="outline"
-                onClick={() => navigate("feed")}
+                onClick={() => {
+                  if (returnSection === "events" || returnSection === "forsale") {
+                    navigate("feed", { section: returnSection });
+                  } else {
+                    navigate("feed");
+                  }
+                }}
                 className="flex-1 h-9 text-sm"
               >
                 Cancel
@@ -778,7 +883,13 @@ export default function PostScreen() {
             </p>
             <div className="space-y-3 w-full">
               <Button
-                onClick={() => navigate("feed")}
+                onClick={() => {
+                  if (returnSection === "events" || returnSection === "forsale") {
+                    navigate("feed", { section: returnSection });
+                  } else {
+                    navigate("feed");
+                  }
+                }}
                 className="w-full bg-primary text-primary-foreground ember-glow"
               >
                 Browse the Feed
@@ -795,6 +906,44 @@ export default function PostScreen() {
         )}
       </div>
 
+      {/* Camera fullscreen overlay */}
+      {showRecorder && createPortal(
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="flex items-center justify-end px-4 py-3 shrink-0">
+            <button
+              onClick={() => setShowRecorder(false)}
+              className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 min-h-0">
+            {submitting ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3">
+                <div className="w-full max-w-xs bg-white/20 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-full bg-white rounded-full transition-all duration-200"
+                    style={{ width: `${videoProgress}%` }}
+                  />
+                </div>
+                <p className="text-white/60 text-sm">Uploading… {videoProgress}%</p>
+              </div>
+            ) : (
+              <LiveRecorder
+                fullscreen
+                onRecorded={(blob, url) => {
+                  handleRecorded(blob, url);
+                  setShowRecorder(false);
+                }}
+                onCancel={() => setShowRecorder(false)}
+              />
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
+
   );
 }

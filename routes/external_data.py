@@ -3,7 +3,6 @@ import time
 import zipfile
 import io
 import logging
-from typing import Optional
 
 import httpx
 import feedparser

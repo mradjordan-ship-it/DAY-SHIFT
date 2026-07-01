@@ -1,0 +1,22 @@
+[
+  {
+    "content": "[auth-token] Add pure unit tests for create_token, token decode, algorithm/key validation",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[location-filter] Add SQL ILIKE location filtering tests (case insensitive, partial, empty/null)",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[calendar-logic] Add _parse_time_range, _times_overlap, date validation, scheduled_at tests",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[run] Execute test suite and show logs",
+    "id": "4",
+    "status": "completed"
+  }
+]

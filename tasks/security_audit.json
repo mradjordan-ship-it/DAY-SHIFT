@@ -1,0 +1,27 @@
+[
+  {
+    "content": "[sanitize-util] Create routes/sanitize.py with centralized sanitization functions (HTML strip, normalize)",
+    "id": "1",
+    "status": "completed"
+  },
+  {
+    "content": "[sanitize-input] Apply sanitization to user-generated fields at storage layer (videos, auth, matches, chat, reports)",
+    "id": "2",
+    "status": "completed"
+  },
+  {
+    "content": "[email-xss] HTML-escape user content interpolated into email templates (email_utils.py, sponsors.py)",
+    "id": "3",
+    "status": "completed"
+  },
+  {
+    "content": "[upload-hardening] Tighten media MIME validation — reject octet-stream, add nosniff to video responses",
+    "id": "4",
+    "status": "completed"
+  },
+  {
+    "content": "[build-test] Verify frontend build + run security tests",
+    "id": "5",
+    "status": "completed"
+  }
+]

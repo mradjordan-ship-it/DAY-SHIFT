@@ -18,6 +18,9 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
   const [reportReason, setReportReason] = useState("other");
   const [reportComment, setReportComment] = useState("");
   const [reportSent, setReportSent] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [sendError, setSendError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,16 +68,19 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
     const content = text.trim();
     setText("");
     setSending(true);
+    setSendError("");
     try {
       const res = await fetch(`/api/matches/${matchId}/messages`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      if (res.ok) {
-        const msg: Message = await res.json();
-        setMessages((prev) => [...prev, msg]);
-      }
+      if (!res.ok) throw new Error("Failed to send message");
+      const msg: Message = await res.json();
+      setMessages((prev) => [...prev, msg]);
+    } catch {
+      setSendError("Failed to send message. Please try again.");
+      setText(content);
     } finally {
       setSending(false);
     }
@@ -84,6 +90,26 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       send();
+    }
+  };
+
+  const submitReport = async () => {
+    if (reportSubmitting) return;
+    setReportSubmitting(true);
+    setReportError("");
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ target_type: "user", target_id: otherUserId, reason: reportReason, comment: reportComment || null }),
+      });
+      if (!res.ok) throw new Error("Failed to submit report");
+      setReportSent(true);
+      setTimeout(() => { setShowReport(false); setReportSent(false); setReportComment(""); }, 1500);
+    } catch {
+      setReportError("Failed to submit report. Please try again.");
+    } finally {
+      setReportSubmitting(false);
     }
   };
 
@@ -234,9 +260,16 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
             size="icon"
             className="w-10 h-10 rounded-xl bg-primary text-primary-foreground ember-glow flex-shrink-0"
           >
-            <Send size={16} />
+            {sending ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send size={16} />
+            )}
           </Button>
         </div>
+        {sendError && (
+          <p className="text-destructive text-xs mt-1.5 px-1">{sendError}</p>
+        )}
       </div>
       )}
       {/* Report modal */}
@@ -275,26 +308,25 @@ export default function ChatScreen({ matchId }: { matchId: number }) {
                   className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground resize-none h-16"
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => setShowReport(false)} className="flex-1 px-4 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground">Cancel</button>
+                  <button onClick={() => setShowReport(false)} disabled={reportSubmitting} className="flex-1 px-4 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50">Cancel</button>
                   <button
-                    onClick={async () => {
-                      try {
-                        const res = await fetch("/api/reports", {
-                          method: "POST",
-                          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-                          body: JSON.stringify({ target_type: "user", target_id: otherUserId, reason: reportReason, comment: reportComment || null }),
-                        });
-                        if (res.ok) {
-                          setReportSent(true);
-                          setTimeout(() => { setShowReport(false); setReportSent(false); setReportComment(""); }, 1500);
-                        }
-                      } catch {}
-                    }}
-                    className="flex-1 px-4 py-2 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground"
+                    onClick={submitReport}
+                    disabled={reportSubmitting}
+                    className="flex-1 px-4 py-2 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    Submit Report
+                    {reportSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-destructive-foreground border-t-transparent rounded-full animate-spin" />
+                        Submitting…
+                      </>
+                    ) : (
+                      "Submit Report"
+                    )}
                   </button>
                 </div>
+                {reportError && (
+                  <p className="text-destructive text-xs text-center">{reportError}</p>
+                )}
               </>
             )}
           </div>

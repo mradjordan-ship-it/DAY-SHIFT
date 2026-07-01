@@ -15,6 +15,7 @@ from .deps import (
     UPLOAD_DIR, MAX_IMAGE_BYTES,
 )
 from .models import RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody, ChangePasswordBody
+from .sanitize import sanitize_text
 from .email_utils import send_verification_email, send_password_reset_email
 
 api = APIRouter()
@@ -32,7 +33,7 @@ def _get_base_url_from_request(request: Request) -> str:
         from urllib.parse import urlparse
         parsed = urlparse(origin)
         return f"{parsed.scheme}://{parsed.netloc}"
-    return "https://dayshift.app"
+    return "https://app.dayshiftnow.me"
 
 
 def _validate_password(password: str) -> None:
@@ -122,9 +123,10 @@ async def register(
     try:
         # Generate email verification token
         verify_token = str(uuid.uuid4())
+        safe_name = sanitize_text(name, max_length=100)
         cur.execute(
             "INSERT INTO users (name, email, password_hash, role, avatar_url, email_verified, email_verify_token, is_advertiser, advertiser_agreement_accepted) VALUES (%s, %s, %s, %s, %s, FALSE, %s, %s, %s) RETURNING *",
-            (name, email, hash_password(password), role, avatar_url, verify_token, role == "advertiser", role == "advertiser"),
+            (safe_name, email, hash_password(password), role, avatar_url, verify_token, role == "advertiser", role == "advertiser"),
         )
         user = dict(cur.fetchone())
         conn.commit()
@@ -435,6 +437,10 @@ def me(current_user=Depends(get_current_user)):
 def onboard(body: dict, current_user=Depends(get_current_user)):
     allowed = {"role", "location", "cuisine_type", "experience_level", "hours", "bio"}
     updates = {k: v for k, v in body.items() if k in allowed and v}
+    # Sanitize text fields
+    for field in ("bio", "location", "cuisine_type"):
+        if field in updates and updates[field]:
+            updates[field] = sanitize_text(updates[field], max_length=500)
     if not updates:
         updates["onboarded"] = True
     else:
@@ -562,7 +568,7 @@ def validate_promo_code(code: str):
 
 @api.get("/promo/my-redemption")
 def get_my_promo_redemption(current_user=Depends(get_current_user)):
-    """Get the current user's promo code redemption (for applying free boost)."""
+    """Get the current user's promo code redemption + welcome boost status."""
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
@@ -574,8 +580,16 @@ def get_my_promo_redemption(current_user=Depends(get_current_user)):
         (current_user["id"],),
     )
     redemption = cur.fetchone()
+
+    # Also check welcome boost
+    cur.execute("SELECT welcome_boost_available FROM users WHERE id = %s", (current_user["id"],))
+    user_row = cur.fetchone()
+    welcome_boost = user_row and user_row["welcome_boost_available"]
+
     cur.close()
     conn.close()
-    if not redemption:
-        return {"redeemed": False}
-    return {"redeemed": True, **dict(redemption)}
+
+    result = {"redeemed": False, "welcome_boost_available": welcome_boost}
+    if redemption:
+        result.update({"redeemed": True, **dict(redemption)})
+    return result

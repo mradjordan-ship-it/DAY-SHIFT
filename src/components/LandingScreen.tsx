@@ -1,7 +1,7 @@
 import { useNav } from "../App";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import InstallPrompt from "./InstallPrompt";
 
 const features = [
   {
@@ -215,30 +215,13 @@ const featureIcons = [
 
 export default function LandingScreen() {
   const { navigate } = useNav();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [bubbleVisible, setBubbleVisible] = useState(true);
-
-  const advance = useCallback(() => {
-    setBubbleVisible(false);
-    setTimeout(() => {
-      setActiveIndex((i) => (i + 1) % features.length);
-      setBubbleVisible(true);
-    }, 400);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(advance, 4000);
-    return () => clearInterval(timer);
-  }, [advance]);
-
-  const feature = features[activeIndex];
 
   return (
     <div className="h-full overflow-y-auto bg-background flex flex-col">
       {/* Header */}
       <header className="flex-shrink-0 px-4 py-3 flex items-center justify-between border-b border-border bg-background/90 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <img src="/dayshift-logo.png" alt="Day Shift" className="h-8 w-auto" />
+          <InstallPrompt inline={true} />
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate("login")}>
           Log In
@@ -261,55 +244,20 @@ export default function LandingScreen() {
         </div>
       </section>
 
-      {/* Features — animated speech bubbles */}
+      {/* Features — grid of cards */}
       <section className="flex-1 px-5 py-10">
         <h2 className="text-xl font-bold text-foreground text-center mb-6" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
           What Day Shift Does For You
         </h2>
 
-        {/* Speech bubble */}
-        <div className="max-w-lg mx-auto">
-          <div
-            className="relative bg-card border border-border rounded-2xl px-5 py-4 shadow-lg transition-all duration-500"
-            style={{
-              opacity: bubbleVisible ? 1 : 0,
-              transform: bubbleVisible ? "translateY(0) scale(1)" : "translateY(12px) scale(0.95)",
-            }}
-          >
-            {/* Bubble tail */}
-            <div className="absolute -bottom-3 left-8 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-[12px] border-t-card" />
-            <div className="absolute -bottom-[14px] left-[30px] w-0 h-0 border-l-[7px] border-l-transparent border-r-[7px] border-r-transparent border-t-[11px] border-t-border opacity-30" />
-            <div className="flex items-start gap-3">
-              {featureIcons[activeIndex]}
-              <div>
-                <h3 className="font-bold text-foreground text-base mb-1">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{feature.bubble}</p>
-              </div>
+        <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto">
+          {features.map((f, i) => (
+            <div key={f.title} className="bg-card border border-border rounded-xl px-3 py-4 flex flex-col items-center text-center gap-2 hover:border-primary/30 transition-colors">
+              {featureIcons[i]}
+              <h3 className="font-semibold text-foreground text-sm leading-tight">{f.title}</h3>
+              <p className="text-muted-foreground text-xs leading-relaxed">{f.desc}</p>
             </div>
-          </div>
-
-          {/* Progress dots */}
-          <div className="flex justify-center gap-2 mt-6">
-            {features.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  setBubbleVisible(false);
-                  setTimeout(() => {
-                    setActiveIndex(i);
-                    setBubbleVisible(true);
-                  }, 300);
-                }}
-                className="transition-all duration-300 rounded-full"
-                style={{
-                  width: i === activeIndex ? "24px" : "8px",
-                  height: "8px",
-                  backgroundColor: i === activeIndex ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.3)",
-                }}
-                aria-label={`Go to feature: ${features[i].title}`}
-              />
-            ))}
-          </div>
+          ))}
         </div>
       </section>
 
@@ -320,11 +268,8 @@ export default function LandingScreen() {
           <button onClick={() => navigate("advertise")} className="text-primary font-semibold hover:text-primary/80 transition-colors">
             Advertise with Us
           </button>
-          <button onClick={() => navigate("sponsor")} className="text-muted-foreground hover:text-foreground transition-colors">
-            Support Us
-          </button>
-          <a href="mailto:support@dayshift.app" className="text-muted-foreground hover:text-foreground transition-colors">
-            Contact
+          <a href="mailto:contact@dayshiftnow.me" className="text-muted-foreground hover:text-foreground transition-colors">
+            Email Us
           </a>
         </div>
       </footer>

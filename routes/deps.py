@@ -18,20 +18,10 @@ import imageio_ffmpeg
 
 from db import get_conn, init_db, db_conn
 
-# ── Stripe Setup ──────────────────────────────────────────────────────────────
-def _init_stripe():
-    import stripe as _stripe
-    key = os.environ.get("STRIPE_SECRET_KEY")
-    if key:
-        _stripe.api_key = key
-    return _stripe
-
-stripe = _init_stripe()
-
 # ── Auth Setup ────────────────────────────────────────────────────────────────
 SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY environment variable is required. Set it before starting the server.")
+    raise RuntimeError("SECRET_KEY environment variable is required for JWT signing — refusing to start with a default")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

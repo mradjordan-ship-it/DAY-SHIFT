@@ -17,7 +17,7 @@ api = APIRouter()
 # ── VAPID Configuration ──────────────────────────────────────────────────────
 VAPID_PRIVATE_KEY_PATH = Path("vapid_keys/private.key")
 VAPID_PRIVATE_KEY = VAPID_PRIVATE_KEY_PATH.read_text() if VAPID_PRIVATE_KEY_PATH.exists() else os.environ.get("VAPID_PRIVATE_KEY", "")
-VAPID_CLAIMS = {"sub": "mailto:support@dayshift.app"}
+VAPID_CLAIMS = {"sub": "mailto:contact@dayshiftnow.me"}
 
 
 class PushSubscriptionBody(BaseModel):

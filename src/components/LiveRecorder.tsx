@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { Video, Circle, Square, RotateCcw, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface LiveRecorderProps {
   onRecorded: (blob: Blob, url: string) => void;
   onCancel: () => void;
+  fullscreen?: boolean;
 }
 
 type RecorderState = "idle" | "previewing" | "recording" | "review";
 
-export default function LiveRecorder({ onRecorded, onCancel }: LiveRecorderProps) {
-  const [state, setState] = useState<RecorderState>("idle");
+export default function LiveRecorder({ onRecorded, onCancel, fullscreen }: LiveRecorderProps) {
+  const [state, setState] = useState<RecorderState>("previewing");
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState("");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
@@ -54,6 +56,19 @@ export default function LiveRecorder({ onRecorded, onCancel }: LiveRecorderProps
       );
     }
   };
+
+  // Auto-start camera on mount
+  useEffect(() => {
+    let mounted = true;
+    startCamera().then(() => {
+      if (!mounted) {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const flipCamera = () => {
     const next = facingMode === "environment" ? "user" : "environment";
@@ -140,9 +155,9 @@ export default function LiveRecorder({ onRecorded, onCancel }: LiveRecorderProps
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn("flex flex-col", fullscreen ? "h-full" : "gap-4")}>
       {/* Viewfinder */}
-      <div className="relative rounded-2xl overflow-hidden bg-black aspect-video">
+      <div className={cn("relative overflow-hidden bg-black", fullscreen ? "h-full" : "rounded-2xl aspect-video")}>
         {/* Live preview (hidden during review) */}
         <video
           ref={liveRef}
@@ -198,6 +213,30 @@ export default function LiveRecorder({ onRecorded, onCancel }: LiveRecorderProps
             />
           </div>
         )}
+
+        {/* Overlay Controls for Previewing / Recording */}
+        {(state === "previewing" || state === "recording") && (
+          <>
+            <div className="absolute bottom-4 right-4 z-10 flex items-center gap-3">
+              {fullscreen && <span className="text-white/80 text-sm font-medium">Record Video</span>}
+              {state === "previewing" ? (
+                <button
+                  onClick={startRecording}
+                  className="w-12 h-12 rounded-full bg-red-500/90 border-[3px] border-white flex items-center justify-center ember-glow shadow-xl active:scale-95 transition-transform"
+                >
+                  <Circle size={18} className="text-white fill-white" />
+                </button>
+              ) : (
+                <button
+                  onClick={stopRecording}
+                  className="w-12 h-12 rounded-full bg-red-500 border-[3px] border-white flex items-center justify-center shadow-xl active:scale-95 transition-transform"
+                >
+                  <Square size={14} className="text-white fill-white" />
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Error */}
@@ -225,30 +264,9 @@ export default function LiveRecorder({ onRecorded, onCancel }: LiveRecorderProps
         </div>
       )}
 
-      {state === "previewing" && (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-muted-foreground text-xs">Position yourself, then hit record</p>
-          <button
-            onClick={startRecording}
-            className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center ember-glow shadow-lg active:scale-95 transition-transform"
-          >
-            <Circle size={28} className="text-white fill-white" />
-          </button>
-          <button onClick={onCancel} className="text-xs text-muted-foreground">Cancel</button>
-        </div>
-      )}
 
-      {state === "recording" && (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-muted-foreground text-xs">Recording… max 60 seconds</p>
-          <button
-            onClick={stopRecording}
-            className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-          >
-            <Square size={24} className="text-white fill-white" />
-          </button>
-        </div>
-      )}
+
+
 
       {state === "review" && (
         <div className="space-y-2">

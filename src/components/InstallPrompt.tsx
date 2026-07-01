@@ -6,7 +6,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-export default function InstallPrompt() {
+export default function InstallPrompt({ inline = false }: { inline?: boolean }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(() => !!localStorage.getItem("ds_install_dismissed"));
@@ -42,10 +42,25 @@ export default function InstallPrompt() {
     trackEvent("pwa_install_dismissed");
   };
 
+    if (inline) {
+    return (
+
+      <button
+        onClick={handleInstall}
+        className="text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-500 text-black hover:bg-amber-400 transition-colors flex items-center gap-1.5"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Install App
+      </button>
+    );
+  }
+
   if (!visible || dismissed || !deferredPrompt) return null;
 
   return (
-    <div className="fixed top-4 left-4 right-4 z-50 max-w-sm mx-auto animate-in slide-in-from-top-4 duration-300">
+    <div className="fixed bottom-20 left-4 right-4 z-50 max-w-sm mx-auto animate-in slide-in-from-bottom-4 duration-300">
       <div className="bg-card border border-amber-500/30 rounded-2xl shadow-2xl p-4 space-y-3">
         <div className="flex items-start gap-3">
           <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">

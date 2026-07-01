@@ -28,7 +28,7 @@ const steps = [
   {
     emoji: "🧡",
     title: "Support Each Other",
-    desc: "Tip great workers, boost your posts for visibility, and build your reputation with reviews.",
+    desc: "Boost your posts for visibility, get reviews, and build your reputation.",
   },
 ];
 

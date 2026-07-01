@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth, useNav } from "../App";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, ChevronLeft, Sparkles, Building2, Star, Zap } from "lucide-react";
+import { Check, ChevronLeft, Sparkles, Store, Star, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -21,7 +21,7 @@ interface AdTier {
 }
 
 const TIER_ICONS: Record<string, React.ReactNode> = {
-  business: <Building2 size={24} className="text-blue-400" />,
+  business: <Store size={24} className="text-blue-400" />,
   premium: <Star size={24} className="text-amber-400" />,
   enterprise: <Zap size={24} className="text-orange-400" />,
 };
@@ -46,7 +46,6 @@ export default function AdvertiseScreen() {
   const [pendingTier, setPendingTier] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [adAgreementAccepted, setAdAgreementAccepted] = useState(false);
   const [legalDialog, setLegalDialog] = useState<"terms" | "privacy" | null>(null);
 
   useEffect(() => {
@@ -93,7 +92,7 @@ export default function AdvertiseScreen() {
       });
 
       if (user?.is_admin) {
-        // Admin: free, no Stripe
+        // Admin: free, no payment gateway
         const res = await fetch("/api/admin/advertise", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -109,8 +108,8 @@ export default function AdvertiseScreen() {
           setError(data.detail || "Failed to activate advertiser");
         }
       } else {
-        // Regular user: Stripe checkout
-        const res = await fetch("/api/advertiser/subscribe", {
+        // Regular user: PayPal checkout
+        const res = await fetch("/api/paypal/subscriptions/checkout", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -119,8 +118,8 @@ export default function AdvertiseScreen() {
           body: JSON.stringify({ tier: pendingTier }),
         });
         const data = await res.json();
-        if (data.stripe_checkout_url) {
-          window.open(data.stripe_checkout_url, "_blank");
+        if (data.paypal_approval_url) {
+          window.open(data.paypal_approval_url, "_blank");
         } else {
           setError(data.detail || "Failed to start checkout");
         }
@@ -243,18 +242,6 @@ export default function AdvertiseScreen() {
             <label className="flex items-start gap-3">
               <input
                 type="checkbox"
-                checked={adAgreementAccepted}
-                onChange={(e) => setAdAgreementAccepted(e.target.checked)}
-                className="mt-1"
-              />
-              <span className="text-sm text-foreground">
-                I agree to the <button type="button" onClick={() => setLegalDialog("terms")} className="text-primary underline">Advertiser Agreement</button>
-              </span>
-            </label>
-
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
                 checked={termsAccepted}
                 onChange={(e) => setTermsAccepted(e.target.checked)}
                 className="mt-1"
@@ -278,10 +265,17 @@ export default function AdvertiseScreen() {
 
             <Button
               className="w-full mt-2"
-              disabled={!adAgreementAccepted || !termsAccepted || !privacyAccepted}
+              disabled={!termsAccepted || !privacyAccepted || subscribing === pendingTier}
               onClick={handleAgreeAndSubscribe}
             >
-              Continue to Payment
+              {subscribing === pendingTier ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Processing…
+                </span>
+              ) : (
+                "Continue to Payment"
+              )}
             </Button>
           </div>
         </DialogContent>

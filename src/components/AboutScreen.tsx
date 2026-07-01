@@ -1,6 +1,6 @@
 import { useNav } from "../App";
 import { Button } from "@/components/ui/button";
-import { ChefHat, Video, MessageCircle, Star, CarFront, ShieldCheck, Zap, Users, Briefcase, Share2, HardHat, Building2 } from "lucide-react";
+import { ChefHat, Video, MessageCircle, Star, CarFront, ShieldCheck, Zap, Users, Briefcase, Share2, ChefHat as CrewIcon, Store } from "lucide-react";
 
 const features = [
   {
@@ -79,7 +79,7 @@ export default function AboutScreen() {
             {/* For Crew */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <HardHat className="w-5 h-5 text-orange-400" />
+                <CrewIcon className="w-5 h-5 text-orange-400" />
                 <h3 className="font-bold text-foreground">For Crew</h3>
               </div>
               <ol className="space-y-2 text-sm text-muted-foreground">
@@ -101,7 +101,7 @@ export default function AboutScreen() {
             {/* For Kitchens */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-blue-400" />
+                <Store className="w-5 h-5 text-blue-400" />
                 <h3 className="font-bold text-foreground">For Kitchens</h3>
               </div>
               <ol className="space-y-2 text-sm text-muted-foreground">

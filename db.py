@@ -67,6 +67,7 @@ def init_db():
         ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_expires_at TIMESTAMPTZ;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS strike_count INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS welcome_boost_available BOOLEAN DEFAULT TRUE;
 
         CREATE TABLE IF NOT EXISTS strikes (
             id SERIAL PRIMARY KEY,
@@ -232,6 +233,7 @@ def init_db():
             message TEXT DEFAULT '',
             status TEXT DEFAULT 'pending',  -- 'pending' | 'completed' | 'refunded'
             stripe_session_id TEXT DEFAULT '',
+            paypal_order_id TEXT DEFAULT '',
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
 
@@ -283,6 +285,7 @@ def init_db():
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
         ALTER TABLE advertiser_subscriptions ADD COLUMN IF NOT EXISTS stripe_session_id TEXT DEFAULT '';
+        ALTER TABLE advertiser_subscriptions ADD COLUMN IF NOT EXISTS paypal_order_id TEXT DEFAULT '';
         ALTER TABLE advertiser_subscriptions DROP CONSTRAINT IF EXISTS advertiser_subscriptions_user_id_key;
 
         -- Individual post boosts
@@ -296,6 +299,7 @@ def init_db():
             end_date TIMESTAMPTZ,
             stripe_session_id TEXT,
             stripe_payment_intent_id TEXT,
+            paypal_order_id TEXT,
             payment_status TEXT DEFAULT 'unpaid',  -- 'unpaid' | 'paid' | 'failed' | 'refunded'
             admin_approved BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMPTZ DEFAULT NOW()
@@ -316,6 +320,10 @@ def init_db():
         ALTER TABLE post_boosts ADD COLUMN IF NOT EXISTS stripe_session_id TEXT;
         ALTER TABLE post_boosts ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
         ALTER TABLE post_boosts ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid';
+        ALTER TABLE post_boosts ADD COLUMN IF NOT EXISTS paypal_order_id TEXT;
+
+        -- Migrate tips to PayPal column if needed
+        ALTER TABLE tips ADD COLUMN IF NOT EXISTS paypal_order_id TEXT;
 
         -- Push notification subscriptions
         CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -384,6 +392,18 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_promo_redemptions_user ON promo_redemptions(user_id);
 
         ALTER TABLE promo_redemptions ADD COLUMN IF NOT EXISTS boost_used BOOLEAN DEFAULT FALSE;
+
+        -- ── PERSISTENT MEDIA STORAGE (bytea in Neon) ──
+        -- Stores uploaded files in the database so they survive container restarts
+        CREATE TABLE IF NOT EXISTS media_files (
+            id SERIAL PRIMARY KEY,
+            filename TEXT NOT NULL UNIQUE,
+            data BYTEA NOT NULL,
+            mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+            file_size INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_media_files_filename ON media_files(filename);
     """)
 
     conn.commit()
@@ -419,7 +439,7 @@ def init_db():
 
     # ── Seed default admin if missing ──
     # Check for ADMIN_EMAIL and ADMIN_PASSWORD in environment
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@dayshift.app")
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@dayshiftnow.me")
     admin_pw = os.environ.get("ADMIN_PASSWORD")
     
     if admin_pw:
@@ -458,6 +478,9 @@ def init_db():
             )
             conn.commit()
             print(f"Seeded promo code: {pc['code']}")
+
+
+    conn.commit()
 
     cur.close()
     conn.close()
