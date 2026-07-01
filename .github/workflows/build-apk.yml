@@ -37,7 +37,6 @@ jobs:
       - name: Build Release APK
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEY_ALIAS: dayshift
           ANDROID_KEYSTORE_FILE: day-shift-release.keystore
         run: cd android && chmod +x gradlew && ./gradlew assembleRelease

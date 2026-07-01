@@ -20,9 +20,10 @@ android {
         release {
             def keystoreFile = System.getenv("ANDROID_KEYSTORE_FILE") ?: "day-shift-release.keystore"
             storeFile file(keystoreFile)
-            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: "android"
+            def pass = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: "android"
+            storePassword pass
             keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "dayshift"
-            keyPassword System.getenv("ANDROID_KEY_PASSWORD") ?: "android"
+            keyPassword pass
         }
     }
 
